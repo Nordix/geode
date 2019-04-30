@@ -14,7 +14,6 @@
  */
 package org.apache.geode.test.junit.rules;
 
-
 import static java.util.stream.Collectors.toList;
 import static org.apache.geode.test.awaitility.GeodeAwaitility.await;
 import static org.junit.Assert.assertEquals;
@@ -93,6 +92,16 @@ public class MBeanServerConnectionRule extends DescribedExternalResource {
    *
    * @return A new proxy MXBean of the same type with which the class was constructed
    */
+  public <T> T getProxyMXBean(Class<T> proxyClass)
+      throws MalformedObjectNameException, IOException {
+    return getProxyMXBean(proxyClass, null);
+  }
+
+  /**
+   * Retrieve a new proxy MXBean
+   *
+   * @return A new proxy MXBean of the same type with which the class was constructed
+   */
   public <T> T getProxyMXBean(Class<T> proxyClass, String beanQueryName)
       throws MalformedObjectNameException, IOException {
     return JMX.newMXBeanProxy(con, getObjectName(proxyClass, beanQueryName), proxyClass);
@@ -126,7 +135,6 @@ public class MBeanServerConnectionRule extends DescribedExternalResource {
         .collect(toList());
   }
 
-
   /**
    * Retrieve a new proxy MBean
    *
@@ -159,21 +167,6 @@ public class MBeanServerConnectionRule extends DescribedExternalResource {
   public AccessControlMXBean getAccessControlMBean() throws Exception {
     return JMX.newMXBeanProxy(con, new ObjectName("GemFire:service=AccessControl,type=Distributed"),
         AccessControlMXBean.class);
-  }
-
-  /**
-   * Retrieve a new proxy MXBean
-   *
-   * @return A new proxy MXBean of the same type with which the class was constructed
-   */
-  public <T> T getProxyMXBean(Class<T> proxyClass)
-      throws MalformedObjectNameException, IOException {
-    return getProxyMXBean(proxyClass, null);
-  }
-
-  public <T> T getProxyMXBean(String beanQueryName)
-      throws MalformedObjectNameException, IOException {
-    return getProxyMXBean(null, beanQueryName);
   }
 
   public MBeanServerConnection getMBeanServerConnection() throws IOException {

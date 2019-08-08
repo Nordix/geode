@@ -107,6 +107,7 @@ import org.apache.geode.internal.logging.InternalLogWriter;
 import org.apache.geode.internal.logging.LogService;
 import org.apache.geode.internal.net.SocketCloser;
 import org.apache.geode.internal.statistics.DummyStatisticsFactory;
+import org.apache.geode.internal.statistics.StatisticsClock;
 import org.apache.geode.security.AccessControl;
 import org.apache.geode.security.AuthenticationFailedException;
 import org.apache.geode.security.AuthenticationRequiredException;
@@ -135,17 +136,12 @@ public class CacheClientNotifier {
    * @return A {@code CacheClientNotifier} instance
    */
   public static synchronized CacheClientNotifier getInstance(InternalCache cache,
-      ClientRegistrationEventQueueManager clientRegistrationEventQueueManager,
-      CacheServerStats acceptorStats,
-      int maximumMessageCount,
-      int messageTimeToLive,
-      ConnectionListener listener,
-      OverflowAttributes overflowAttributes,
+      StatisticsClock statisticsClock, CacheServerStats acceptorStats, int maximumMessageCount,
+      int messageTimeToLive, ConnectionListener listener, OverflowAttributes overflowAttributes,
       boolean isGatewayReceiver) {
     if (ccnSingleton == null) {
-      ccnSingleton =
-          new CacheClientNotifier(cache, clientRegistrationEventQueueManager, acceptorStats,
-              maximumMessageCount, messageTimeToLive, listener, isGatewayReceiver);
+      ccnSingleton = new CacheClientNotifier(cache, statisticsClock, acceptorStats,
+          maximumMessageCount, messageTimeToLive, listener, isGatewayReceiver);
     }
 
     if (!isGatewayReceiver && ccnSingleton.getHaContainer() == null) {
@@ -293,7 +289,7 @@ public class CacheClientNotifier {
         cacheClientProxy =
             new CacheClientProxy(this, socket, clientProxyMembershipID, isPrimary, clientConflation,
                 clientVersion, acceptorId, notifyBySubscription, cache.getSecurityService(),
-                subject);
+                subject, statisticsClock);
         successful = initializeProxy(cacheClientProxy);
       } else {
         cacheClientProxy.setSubject(subject);
@@ -368,7 +364,8 @@ public class CacheClientNotifier {
       // Create the new proxy for this non-durable client
       cacheClientProxy =
           new CacheClientProxy(this, socket, clientProxyMembershipID, isPrimary, clientConflation,
-              clientVersion, acceptorId, notifyBySubscription, cache.getSecurityService(), subject);
+              clientVersion, acceptorId, notifyBySubscription, cache.getSecurityService(), subject,
+              statisticsClock);
       successful = initializeProxy(cacheClientProxy);
     }
 
@@ -1690,14 +1687,12 @@ public class CacheClientNotifier {
    * @param cache The GemFire {@code InternalCache}
    * @param listener a listener which should receive notifications abouts queues being added or
    */
-  private CacheClientNotifier(InternalCache cache,
-      ClientRegistrationEventQueueManager clientRegistrationEventQueueManager,
-      CacheServerStats acceptorStats, int maximumMessageCount,
-      int messageTimeToLive,
+  private CacheClientNotifier(InternalCache cache, StatisticsClock statisticsClock,
+      CacheServerStats acceptorStats, int maximumMessageCount, int messageTimeToLive,
       ConnectionListener listener, boolean isGatewayReceiver) {
     // Set the Cache
     setCache(cache);
-    this.clientRegistrationEventQueueManager = clientRegistrationEventQueueManager;
+    this.statisticsClock = statisticsClock;
     this.acceptorStats = acceptorStats;
     // we only need one thread per client and wait 50ms for close
     socketCloser = new SocketCloser(1, 50);
@@ -1922,6 +1917,8 @@ public class CacheClientNotifier {
    */
   private final ConnectionListener _connectionListener;
 
+  private final StatisticsClock statisticsClock;
+
   private final CacheServerStats acceptorStats;
 
   /**
@@ -2092,8 +2089,7 @@ public class CacheClientNotifier {
   @FunctionalInterface
   @VisibleForTesting
   public interface CacheClientNotifierProvider {
-    CacheClientNotifier get(InternalCache cache,
-        ClientRegistrationEventQueueManager clientRegistrationEventQueueManager,
+    CacheClientNotifier get(InternalCache cache, StatisticsClock statisticsClock,
         CacheServerStats acceptorStats, int maximumMessageCount, int messageTimeToLive,
         ConnectionListener listener, OverflowAttributes overflowAttributes,
         boolean isGatewayReceiver);

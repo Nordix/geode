@@ -342,7 +342,8 @@ public class ColocationHelper {
       PartitionedRegion region, Set<Integer> bucketSet) {
     Map<String, LocalDataSet> colocatedLocalDataSets = new HashMap<String, LocalDataSet>();
     if (region.getColocatedWith() == null && (!region.isColocatedBy())) {
-      colocatedLocalDataSets.put(region.getFullPath(), new LocalDataSet(region, bucketSet));
+      colocatedLocalDataSets.put(region.getFullPath(),
+          new LocalDataSet(region, bucketSet));
       return colocatedLocalDataSets;
     }
     Map<String, PartitionedRegion> colocatedRegions =
@@ -351,7 +352,8 @@ public class ColocationHelper {
       colocatedLocalDataSets.put(colocatedRegion.getFullPath(),
           new LocalDataSet((PartitionedRegion) colocatedRegion, bucketSet));
     }
-    colocatedLocalDataSets.put(region.getFullPath(), new LocalDataSet(region, bucketSet));
+    colocatedLocalDataSets.put(region.getFullPath(),
+        new LocalDataSet(region, bucketSet));
     return colocatedLocalDataSets;
   }
 

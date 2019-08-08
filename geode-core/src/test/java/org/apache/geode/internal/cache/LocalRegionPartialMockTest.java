@@ -17,6 +17,7 @@ package org.apache.geode.internal.cache;
 import static org.apache.geode.internal.cache.LocalRegion.InitializationLevel.AFTER_INITIAL_IMAGE;
 import static org.apache.geode.internal.cache.LocalRegion.InitializationLevel.ANY_INIT;
 import static org.apache.geode.internal.cache.LocalRegion.InitializationLevel.BEFORE_INITIAL_IMAGE;
+import static org.apache.geode.internal.statistics.StatisticsClockFactory.disabledClock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
@@ -227,9 +228,8 @@ public class LocalRegionPartialMockTest {
     when(cache.getCCPTimer()).thenReturn(mock(SystemTimer.class));
 
     CacheClientNotifier ccn =
-        CacheClientNotifier.getInstance(cache, mock(ClientRegistrationEventQueueManager.class),
-            mock(CacheServerStats.class), 10, 10,
-            mock(ConnectionListener.class), null, true);
+        CacheClientNotifier.getInstance(cache, disabledClock(), mock(CacheServerStats.class), 10,
+            10, mock(ConnectionListener.class), null, true);
 
     doCallRealMethod().when(region).notifyClientsOfTombstoneGC(regionGCVersions, keysRemoved,
         eventID, routing);
@@ -250,9 +250,8 @@ public class LocalRegionPartialMockTest {
     when(cache.getCCPTimer()).thenReturn(mock(SystemTimer.class));
 
     CacheClientNotifier ccn =
-        CacheClientNotifier.getInstance(cache, mock(ClientRegistrationEventQueueManager.class),
-            mock(CacheServerStats.class), 10, 10,
-            mock(ConnectionListener.class), null, true);
+        CacheClientNotifier.getInstance(cache, disabledClock(), mock(CacheServerStats.class), 10,
+            10, mock(ConnectionListener.class), null, true);
 
     when(proxy.getProxyID()).thenReturn(mock(ClientProxyMembershipID.class));
     ccn.addClientProxyToMap(proxy);

@@ -50,7 +50,7 @@ import org.apache.geode.internal.cache.FilterProfile;
 import org.apache.geode.internal.cache.FilterRoutingInfo;
 import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.cache.InternalCacheEvent;
-import org.apache.geode.internal.cache.RegionQueueException;
+import org.apache.geode.internal.statistics.StatisticsClock;
 import org.apache.geode.test.fake.Fakes;
 
 public class CacheClientNotifierTest {
@@ -67,13 +67,13 @@ public class CacheClientNotifierTest {
     CacheClientProxy cacheClientProxy = mock(CacheClientProxy.class);
     ClientUpdateMessageImpl clientUpdateMessage = mock(ClientUpdateMessageImpl.class);
     ClientRegistrationMetadata clientRegistrationMetadata = mock(ClientRegistrationMetadata.class);
+    StatisticsClock statisticsClock = mock(StatisticsClock.class);
 
     when(clientRegistrationMetadata.getClientProxyMembershipID()).thenReturn(
         clientProxyMembershipID);
 
     CacheClientNotifier cacheClientNotifier = CacheClientNotifier.getInstance(internalCache,
-        new ClientRegistrationEventQueueManager(), cacheServerStats, 0, 0,
-        connectionListener, null, false);
+        statisticsClock, cacheServerStats, 0, 0, connectionListener, null, false);
     final CacheClientNotifier cacheClientNotifierSpy = spy(cacheClientNotifier);
 
     CountDownLatch waitForEventDispatchCountdownLatch = new CountDownLatch(1);
@@ -236,10 +236,8 @@ public class CacheClientNotifierTest {
     InternalCache internalCache = Fakes.cache();
 
     CacheClientNotifier ccn =
-        CacheClientNotifier.getInstance(internalCache,
-            mock(ClientRegistrationEventQueueManager.class),
-            mock(CacheServerStats.class), 10, 10,
-            mock(ConnectionListener.class), null, true);
+        CacheClientNotifier.getInstance(internalCache, mock(StatisticsClock.class),
+            mock(CacheServerStats.class), 10, 10, mock(ConnectionListener.class), null, true);
 
     assertFalse(CacheClientNotifier.singletonHasClientProxies());
     ccn.shutdown(111);
@@ -252,10 +250,8 @@ public class CacheClientNotifierTest {
     CacheClientProxy proxy = mock(CacheClientProxy.class);
 
     CacheClientNotifier ccn =
-        CacheClientNotifier.getInstance(internalCache,
-            mock(ClientRegistrationEventQueueManager.class),
-            mock(CacheServerStats.class), 10, 10,
-            mock(ConnectionListener.class), null, true);
+        CacheClientNotifier.getInstance(internalCache, mock(StatisticsClock.class),
+            mock(CacheServerStats.class), 10, 10, mock(ConnectionListener.class), null, true);
 
     when(proxy.getProxyID()).thenReturn(mock(ClientProxyMembershipID.class));
     ccn.addClientProxy(proxy);
@@ -273,10 +269,8 @@ public class CacheClientNotifierTest {
     CacheClientProxy proxy = mock(CacheClientProxy.class);
 
     CacheClientNotifier ccn =
-        CacheClientNotifier.getInstance(internalCache,
-            mock(ClientRegistrationEventQueueManager.class),
-            mock(CacheServerStats.class), 10, 10,
-            mock(ConnectionListener.class), null, true);
+        CacheClientNotifier.getInstance(internalCache, mock(StatisticsClock.class),
+            mock(CacheServerStats.class), 10, 10, mock(ConnectionListener.class), null, true);
 
     when(proxy.getProxyID()).thenReturn(mock(ClientProxyMembershipID.class));
     ccn.addClientInitProxy(proxy);

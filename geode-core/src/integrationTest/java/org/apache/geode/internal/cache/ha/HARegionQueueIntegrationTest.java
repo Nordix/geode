@@ -79,6 +79,7 @@ import org.apache.geode.internal.cache.tier.sockets.ClientUpdateMessageImpl;
 import org.apache.geode.internal.cache.tier.sockets.ConnectionListener;
 import org.apache.geode.internal.cache.tier.sockets.HAEventWrapper;
 import org.apache.geode.internal.concurrent.ConcurrentHashSet;
+import org.apache.geode.internal.statistics.StatisticsClock;
 import org.apache.geode.internal.util.BlobHelper;
 import org.apache.geode.internal.util.concurrent.StoppableReentrantReadWriteLock;
 
@@ -119,10 +120,9 @@ public class HARegionQueueIntegrationTest {
 
   private CacheClientNotifier createCacheClientNotifier() {
     CacheClientNotifier ccn =
-        CacheClientNotifier.getInstance((InternalCache) cache,
-            mock(ClientRegistrationEventQueueManager.class), mock(CacheServerStats.class),
-            100000, 100000, mock(ConnectionListener.class),
-            null, false);
+        CacheClientNotifier.getInstance((InternalCache) cache, mock(StatisticsClock.class),
+            mock(CacheServerStats.class), 100000, 100000, mock(ConnectionListener.class), null,
+            false);
     return ccn;
   }
 
@@ -619,7 +619,7 @@ public class HARegionQueueIntegrationTest {
 
     return new HARegionQueue("haRegion+" + index, haRegion, (InternalCache) cache, haContainer,
         null, (byte) 1, true, mock(HARegionQueueStats.class), giiLock, rwLock,
-        mock(CancelCriterion.class), puttingGIIDataInQueue);
+        mock(CancelCriterion.class), puttingGIIDataInQueue, mock(StatisticsClock.class));
   }
 
   private HARegionQueue createHARegionQueue(Map haContainer, int index) throws Exception {

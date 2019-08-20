@@ -82,6 +82,7 @@ public class ClientUpdateMessageImplTest implements Serializable {
     // succeed.
     CacheClientNotifier cacheClientNotifier =
         CacheClientNotifier.getInstance(Fakes.cache(),
+            mock(ClientRegistrationEventQueueManager.class),
             mock(StatisticsClock.class),
             mock(CacheServerStats.class), 10, 10,
             mock(ConnectionListener.class), null, true);

@@ -74,7 +74,8 @@ public class CacheClientNotifierTest {
         clientProxyMembershipID);
 
     CacheClientNotifier cacheClientNotifier = CacheClientNotifier.getInstance(internalCache,
-        statisticsClock, cacheServerStats, 0, 0, connectionListener, null, false);
+        new ClientRegistrationEventQueueManager(), statisticsClock, cacheServerStats, 0, 0,
+        connectionListener, null, false);
     final CacheClientNotifier cacheClientNotifierSpy = spy(cacheClientNotifier);
 
     CountDownLatch waitForEventDispatchCountdownLatch = new CountDownLatch(1);
@@ -238,7 +239,9 @@ public class CacheClientNotifierTest {
     InternalCache internalCache = Fakes.cache();
 
     CacheClientNotifier ccn =
-        CacheClientNotifier.getInstance(internalCache, mock(StatisticsClock.class),
+        CacheClientNotifier.getInstance(internalCache,
+            mock(ClientRegistrationEventQueueManager.class),
+            mock(StatisticsClock.class),
             mock(CacheServerStats.class), 10, 10, mock(ConnectionListener.class), null, true);
 
     assertFalse(CacheClientNotifier.singletonHasClientProxies());
@@ -252,7 +255,9 @@ public class CacheClientNotifierTest {
     CacheClientProxy proxy = mock(CacheClientProxy.class);
 
     CacheClientNotifier ccn =
-        CacheClientNotifier.getInstance(internalCache, mock(StatisticsClock.class),
+        CacheClientNotifier.getInstance(internalCache,
+            mock(ClientRegistrationEventQueueManager.class),
+            mock(StatisticsClock.class),
             mock(CacheServerStats.class), 10, 10, mock(ConnectionListener.class), null, true);
 
     when(proxy.getProxyID()).thenReturn(mock(ClientProxyMembershipID.class));
@@ -271,7 +276,9 @@ public class CacheClientNotifierTest {
     CacheClientProxy proxy = mock(CacheClientProxy.class);
 
     CacheClientNotifier ccn =
-        CacheClientNotifier.getInstance(internalCache, mock(StatisticsClock.class),
+        CacheClientNotifier.getInstance(internalCache,
+            mock(ClientRegistrationEventQueueManager.class),
+            mock(StatisticsClock.class),
             mock(CacheServerStats.class), 10, 10, mock(ConnectionListener.class), null, true);
 
     when(proxy.getProxyID()).thenReturn(mock(ClientProxyMembershipID.class));

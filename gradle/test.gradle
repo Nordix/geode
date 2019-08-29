@@ -202,6 +202,7 @@ gradle.taskGraph.whenReady({ graph ->
       systemProperty 'gemfire.DEFAULT_MAX_OPLOG_SIZE', '10'
       systemProperty 'gemfire.disallowMcastDefaults', 'true'
       systemProperty 'jline.terminal', 'jline.UnsupportedTerminal'
+      systemProperty 'gemfire.CLIENT_ASYNC_FUNCTION_EXECUTION', 'true'
       def logLevel = System.getProperty('log-level')
       if (logLevel != null) {
         systemProperty 'log-level', logLevel

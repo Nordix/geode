@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 
 import org.apache.geode.annotations.internal.MakeNotStatic;
 import org.apache.geode.cache.Region;
@@ -44,6 +45,7 @@ import org.apache.geode.distributed.internal.InternalDistributedSystem;
 import org.apache.geode.internal.InternalEntity;
 import org.apache.geode.internal.cache.GemFireCacheImpl;
 import org.apache.geode.internal.cache.InternalRegion;
+import org.apache.geode.internal.logging.LoggingExecutors;
 
 public class InternalFunctionExecutionServiceImpl
     implements FunctionExecutionService, InternalFunctionExecutionService {
@@ -56,12 +58,15 @@ public class InternalFunctionExecutionServiceImpl
 
   private static final String[] EMPTY_GROUPS = new String[0];
 
+  static final ExecutorService executorService =
+      LoggingExecutors.newCachedThreadPool("Function Asynchronous Execution Thread-", true);
+
   @MakeNotStatic
   private static final ConcurrentHashMap<String, Function> idToFunctionMap =
       new ConcurrentHashMap<>();
 
   public InternalFunctionExecutionServiceImpl() {
-    // nothing
+
   }
 
   // FunctionExecutionService API ----------------------------------------------------------------
@@ -137,7 +142,7 @@ public class InternalFunctionExecutionServiceImpl
     }
 
     if (isClientRegion(region)) {
-      return new ServerRegionFunctionExecutor(region, proxyCache);
+      return new ServerRegionFunctionExecutor(region, proxyCache, executorService);
     }
     if (PartitionRegionHelper.isPartitionedRegion(region)) {
       return new PartitionedRegionFunctionExecutor(region);
@@ -215,7 +220,7 @@ public class InternalFunctionExecutionServiceImpl
       throw new UnsupportedOperationException();
     }
 
-    return new ServerFunctionExecutor(pool, false, groups);
+    return new ServerFunctionExecutor(pool, false, executorService, groups);
   }
 
   @Override
@@ -229,7 +234,7 @@ public class InternalFunctionExecutionServiceImpl
       throw new UnsupportedOperationException();
     }
 
-    return new ServerFunctionExecutor(pool, true, groups);
+    return new ServerFunctionExecutor(pool, true, executorService, groups);
   }
 
   @Override
@@ -250,7 +255,7 @@ public class InternalFunctionExecutionServiceImpl
     } else {
       ProxyCache proxyCache = (ProxyCache) regionService;
       return new ServerFunctionExecutor(proxyCache.getUserAttributes().getPool(), false, proxyCache,
-          groups);
+          executorService, groups);
     }
   }
 
@@ -272,7 +277,7 @@ public class InternalFunctionExecutionServiceImpl
     } else {
       ProxyCache proxyCache = (ProxyCache) regionService;
       return new ServerFunctionExecutor(proxyCache.getUserAttributes().getPool(), true, proxyCache,
-          groups);
+          executorService, groups);
     }
   }
 

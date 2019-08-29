@@ -17,8 +17,6 @@ package org.apache.geode.internal.cache.execute;
 import java.util.Arrays;
 import java.util.Properties;
 
-import org.junit.Assume;
-
 import org.apache.geode.cache.client.ClientCache;
 import org.apache.geode.cache.client.ClientCacheFactory;
 import org.apache.geode.cache.server.CacheServer;
@@ -71,8 +69,6 @@ public abstract class FunctionServiceClientBase extends FunctionServiceBase {
 
   @Override
   public void resultCollectorHonorsFunctionTimeout() throws InterruptedException {
-    Assume.assumeTrue("GEODE-3817 - Client side function execution does not honor the timeout",
-        false);
     super.resultCollectorHonorsFunctionTimeout();
   }
 }

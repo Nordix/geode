@@ -57,6 +57,9 @@ public abstract class AbstractExecution implements InternalExecution {
   private static final String CLIENT_FUNCTION_TIMEOUT_SYSTEM_PROPERTY =
       DistributionConfig.GEMFIRE_PREFIX + "CLIENT_FUNCTION_TIMEOUT";
 
+  private static final String CLIENT_ASYNC_FUNCTION_EXECUTION_SYSTEM_PROPERTY =
+      DistributionConfig.GEMFIRE_PREFIX + "CLIENT_ASYNC_FUNCTION_EXECUTION";
+
   private static final Logger logger = LogService.getLogger();
 
   boolean isMemberMappedArgument;
@@ -103,6 +106,8 @@ public abstract class AbstractExecution implements InternalExecution {
   protected ProxyCache proxyCache;
 
   private final int timeoutMs;
+
+  private final boolean isAsyncClientFunctionExecution;
 
   @MakeNotStatic
   private static final ConcurrentHashMap<String, byte[]> idToFunctionAttributes =
@@ -164,6 +169,9 @@ public abstract class AbstractExecution implements InternalExecution {
     final int timeoutMs = Integer.getInteger(CLIENT_FUNCTION_TIMEOUT_SYSTEM_PROPERTY,
         DEFAULT_CLIENT_FUNCTION_TIMEOUT);
     this.timeoutMs = timeoutMs >= 0 ? timeoutMs : DEFAULT_CLIENT_FUNCTION_TIMEOUT;
+
+    this.isAsyncClientFunctionExecution =
+        Boolean.getBoolean(CLIENT_ASYNC_FUNCTION_EXECUTION_SYSTEM_PROPERTY);
   }
 
   protected AbstractExecution(AbstractExecution ae) {
@@ -183,6 +191,7 @@ public abstract class AbstractExecution implements InternalExecution {
     }
     isFnSerializationReqd = ae.isFnSerializationReqd;
     timeoutMs = ae.timeoutMs;
+    isAsyncClientFunctionExecution = ae.isAsyncClientFunctionExecution;
   }
 
   protected AbstractExecution(AbstractExecution ae, boolean isReExecute) {
@@ -529,5 +538,14 @@ public abstract class AbstractExecution implements InternalExecution {
    */
   protected int getTimeoutMs() {
     return timeoutMs;
+  }
+
+  /**
+   * Get if is execution of functions is asynchronous
+   *
+   * @return timeout in milliseconds.
+   */
+  protected boolean getIsAsyncClientFunctionExecution() {
+    return isAsyncClientFunctionExecution;
   }
 }

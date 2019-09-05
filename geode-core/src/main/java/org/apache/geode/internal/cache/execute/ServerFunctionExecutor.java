@@ -16,7 +16,13 @@
 package org.apache.geode.internal.cache.execute;
 
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+
+import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.cache.client.Pool;
 import org.apache.geode.cache.client.ServerConnectivityException;
@@ -34,8 +40,10 @@ import org.apache.geode.cache.execute.FunctionService;
 import org.apache.geode.cache.execute.ResultCollector;
 import org.apache.geode.internal.cache.TXManagerImpl;
 import org.apache.geode.internal.cache.execute.util.SynchronizedResultCollector;
+import org.apache.geode.internal.logging.LogService;
 
 public class ServerFunctionExecutor extends AbstractExecution {
+  private static final Logger logger = LogService.getLogger();
 
   private PoolImpl pool;
 
@@ -43,18 +51,23 @@ public class ServerFunctionExecutor extends AbstractExecution {
 
   private String[] groups;
 
+  private ExecutorService executorService;
 
-  ServerFunctionExecutor(Pool pool, boolean allServers, String... groups) {
+  ServerFunctionExecutor(Pool pool, boolean allServers, ExecutorService executorService,
+      String... groups) {
     this.pool = (PoolImpl) pool;
     this.allServers = allServers;
     this.groups = groups;
+    this.executorService = executorService;
   }
 
-  ServerFunctionExecutor(Pool pool, boolean allServers, ProxyCache proxyCache, String... groups) {
+  ServerFunctionExecutor(Pool pool, boolean allServers, ProxyCache proxyCache,
+      ExecutorService executorService, String... groups) {
     this.pool = (PoolImpl) pool;
     this.allServers = allServers;
     this.proxyCache = proxyCache;
     this.groups = groups;
+    this.executorService = executorService;
   }
 
   private ServerFunctionExecutor(ServerFunctionExecutor sfe) {
@@ -64,26 +77,30 @@ public class ServerFunctionExecutor extends AbstractExecution {
     }
     allServers = sfe.allServers;
     groups = sfe.groups;
+    executorService = sfe.executorService;
   }
 
   private ServerFunctionExecutor(ServerFunctionExecutor sfe, Object args) {
     this(sfe);
     this.args = args;
+    executorService = sfe.executorService;
   }
 
   private ServerFunctionExecutor(ServerFunctionExecutor sfe, ResultCollector collector) {
     this(sfe);
     rc = collector != null ? new SynchronizedResultCollector(collector) : null;
+    executorService = sfe.executorService;
   }
 
   private ServerFunctionExecutor(ServerFunctionExecutor sfe, MemberMappedArgument argument) {
     this(sfe);
     memberMappedArg = argument;
     isMemberMappedArgument = true;
+    executorService = sfe.executorService;
   }
 
   protected ResultCollector executeFunction(final String functionId, boolean result, boolean isHA,
-      boolean optimizeForWrite) {
+      boolean optimizeForWrite, long timeout, TimeUnit unit) {
     try {
       if (proxyCache != null) {
         if (proxyCache.isClosed()) {
@@ -97,9 +114,10 @@ public class ServerFunctionExecutor extends AbstractExecution {
         hasResult = 1;
         if (rc == null) {
           ResultCollector defaultCollector = new DefaultResultCollector();
-          return executeOnServer(functionId, defaultCollector, hasResult, isHA, optimizeForWrite);
+          return executeOnServer(functionId, defaultCollector, hasResult, isHA, optimizeForWrite,
+              timeout, unit);
         } else {
-          return executeOnServer(functionId, rc, hasResult, isHA, optimizeForWrite);
+          return executeOnServer(functionId, rc, hasResult, isHA, optimizeForWrite, timeout, unit);
         }
       } else {
         executeOnServerNoAck(functionId, hasResult, isHA, optimizeForWrite);
@@ -111,7 +129,7 @@ public class ServerFunctionExecutor extends AbstractExecution {
   }
 
   @Override
-  protected ResultCollector executeFunction(final Function function) {
+  protected ResultCollector executeFunction(final Function function, long timeout, TimeUnit unit) {
     byte hasResult = 0;
     try {
       if (proxyCache != null) {
@@ -123,11 +141,12 @@ public class ServerFunctionExecutor extends AbstractExecution {
 
       if (function.hasResult()) {
         hasResult = 1;
+
         if (rc == null) {
           ResultCollector defaultCollector = new DefaultResultCollector();
-          return executeOnServer(function, defaultCollector, hasResult);
+          return executeOnServer(function, defaultCollector, hasResult, timeout, unit);
         } else {
-          return executeOnServer(function, rc, hasResult);
+          return executeOnServer(function, rc, hasResult, timeout, unit);
         }
       } else {
         executeOnServerNoAck(function, hasResult);
@@ -136,88 +155,90 @@ public class ServerFunctionExecutor extends AbstractExecution {
     } finally {
       UserAttributes.userAttributes.set(null);
     }
-
   }
 
-  private ResultCollector executeOnServer(Function function, ResultCollector rc, byte hasResult) {
-    FunctionStats stats = FunctionStats.getFunctionStats(function.getId());
-    try {
-      validateExecution(function, null);
-      long start = stats.startTime();
-      stats.startFunctionExecution(true);
-
-      final ExecuteFunctionOpImpl executeFunctionOp =
-          new ExecuteFunctionOpImpl(function, args, memberMappedArg,
-              rc, isFnSerializationReqd, (byte) 0, groups, allServers, isIgnoreDepartedMembers(),
-              getTimeoutMs());
-
-      final Supplier<ExecuteFunctionOpImpl> executeFunctionOpSupplier =
-          () -> new ExecuteFunctionOpImpl(function, args, memberMappedArg,
-              rc, isFnSerializationReqd, (byte) 0,
-              null/* onGroups does not use single-hop for now */,
-              false, false, getTimeoutMs());
-
-      final Supplier<ExecuteFunctionOpImpl> reExecuteFunctionOpSupplier =
-          () -> new ExecuteFunctionOpImpl(function, this.getArguments(),
-              this.getMemberMappedArgument(), rc,
-              isFnSerializationReqd, (byte) 1, groups, allServers,
-              this.isIgnoreDepartedMembers(), getTimeoutMs());
-
-      ExecuteFunctionOp.execute(pool, allServers,
-          rc, function.isHA(), UserAttributes.userAttributes.get(), groups,
-          executeFunctionOp,
-          executeFunctionOpSupplier,
-          reExecuteFunctionOpSupplier);
-
-      stats.endFunctionExecution(start, true);
-      rc.endResults();
-      return rc;
-    } catch (FunctionException functionException) {
-      stats.endFunctionExecutionWithException(true);
-      throw functionException;
-    } catch (ServerConnectivityException exception) {
-      throw exception;
-    } catch (Exception exception) {
-      stats.endFunctionExecutionWithException(true);
-      throw new FunctionException(exception);
-    }
-  }
-
-  private ResultCollector executeOnServer(String functionId, ResultCollector rc, byte hasResult,
-      boolean isHA, boolean optimizeForWrite) {
-    FunctionStats stats = FunctionStats.getFunctionStats(functionId);
+  private ResultCollector executeOnServer(Function function, String functionId, ResultCollector rc,
+      byte hasResult,
+      boolean isHA, boolean optimizeForWrite, long timeout, TimeUnit unit) {
+    final String localFunctionId = (function != null) ? function.getId() : functionId;
+    FunctionStats stats = FunctionStats.getFunctionStats(localFunctionId);
+    int socketReadTimeout = getTimeoutMs();
     try {
       validateExecution(null, null);
       long start = stats.startTime();
       stats.startFunctionExecution(true);
+      final ExecuteFunctionOpImpl executeFunctionOp;
+      final Supplier<ExecuteFunctionOpImpl> executeFunctionOpSupplier;
+      final Supplier<ExecuteFunctionOpImpl> reExecuteFunctionOpSupplier;
+      if (function != null) {
+        executeFunctionOp =
+            new ExecuteFunctionOpImpl(function, args, memberMappedArg,
+                rc, isFnSerializationReqd, (byte) 0, groups, allServers, isIgnoreDepartedMembers(),
+                socketReadTimeout);
 
-      final ExecuteFunctionOpImpl executeFunctionOp =
-          new ExecuteFunctionOpImpl(functionId, args, memberMappedArg, hasResult,
-              rc, isFnSerializationReqd, isHA, optimizeForWrite, (byte) 0, groups, allServers,
-              this.isIgnoreDepartedMembers(), getTimeoutMs());
+        executeFunctionOpSupplier =
+            () -> new ExecuteFunctionOpImpl(function, args, memberMappedArg,
+                rc, isFnSerializationReqd, (byte) 0,
+                null/* onGroups does not use single-hop for now */,
+                false, false, socketReadTimeout);
 
-      final Supplier<ExecuteFunctionOpImpl> executeFunctionOpSupplier =
-          () -> new ExecuteFunctionOpImpl(functionId, args, memberMappedArg,
-              hasResult,
-              rc, isFnSerializationReqd, isHA, optimizeForWrite, (byte) 0,
-              null/* onGroups does not use single-hop for now */, false, false, getTimeoutMs());
+        reExecuteFunctionOpSupplier =
+            () -> new ExecuteFunctionOpImpl(function, this.getArguments(),
+                this.getMemberMappedArgument(), rc,
+                isFnSerializationReqd, (byte) 1, groups, allServers,
+                this.isIgnoreDepartedMembers(), socketReadTimeout);
+      } else {
+        executeFunctionOp =
+            new ExecuteFunctionOpImpl(functionId, args, memberMappedArg, hasResult,
+                rc, isFnSerializationReqd, isHA, optimizeForWrite, (byte) 0, groups, allServers,
+                this.isIgnoreDepartedMembers(), socketReadTimeout);
 
-      final Supplier<ExecuteFunctionOpImpl> reExecuteFunctionOpSupplier =
-          () -> new ExecuteFunctionOpImpl(functionId, args,
-              this.getMemberMappedArgument(),
-              hasResult, rc, isFnSerializationReqd, isHA, optimizeForWrite, (byte) 1,
-              groups, allServers, this.isIgnoreDepartedMembers(), getTimeoutMs());
+        executeFunctionOpSupplier =
+            () -> new ExecuteFunctionOpImpl(functionId, args, memberMappedArg,
+                hasResult,
+                rc, isFnSerializationReqd, isHA, optimizeForWrite, (byte) 0,
+                null/* onGroups does not use single-hop for now */, false, false,
+                socketReadTimeout);
 
-      ExecuteFunctionOp.execute(pool, allServers,
-          rc, isHA,
-          UserAttributes.userAttributes.get(), groups,
-          executeFunctionOp,
-          executeFunctionOpSupplier,
-          reExecuteFunctionOpSupplier);
-
-      stats.endFunctionExecution(start, true);
-      rc.endResults();
-      return rc;
+        reExecuteFunctionOpSupplier =
+            () -> new ExecuteFunctionOpImpl(functionId, args,
+                this.getMemberMappedArgument(),
+                hasResult, rc, isFnSerializationReqd, isHA, optimizeForWrite, (byte) 1,
+                groups, allServers, this.isIgnoreDepartedMembers(), socketReadTimeout);
+      }
+      // TODO alberto.gomez: Do we really want to have the following if-else?
+      // If timeout > 0 then the external behavior would be blocking as it can be seen below
+      // although the code would be more efficient (less threads) with this "if-else".
+      if (getIsAsyncClientFunctionExecution()) {
+        ProxyResultCollector proxyCollector = new ProxyResultCollector();
+        final Callable callableObj;
+        callableObj = () -> {
+          ExecuteFunctionOp.execute(pool, allServers,
+              rc, isHA,
+              UserAttributes.userAttributes.get(), groups,
+              executeFunctionOp,
+              executeFunctionOpSupplier,
+              reExecuteFunctionOpSupplier);
+          stats.endFunctionExecution(start, true);
+          return rc;
+        };
+        Future<ResultCollector> future =
+            (Future<ResultCollector>) executorService.submit(callableObj);
+        proxyCollector.setFuture(future);
+        if (timeout > 0) {
+          proxyCollector.getResult(timeout, unit);
+        }
+        return proxyCollector;
+      } else {
+        ExecuteFunctionOp.execute(pool, allServers,
+            rc, isHA,
+            UserAttributes.userAttributes.get(), groups,
+            executeFunctionOp,
+            executeFunctionOpSupplier,
+            reExecuteFunctionOpSupplier);
+        stats.endFunctionExecution(start, true);
+        return rc;
+      }
     } catch (FunctionException functionException) {
       stats.endFunctionExecutionWithException(true);
       throw functionException;
@@ -227,6 +248,16 @@ public class ServerFunctionExecutor extends AbstractExecution {
       stats.endFunctionExecutionWithException(true);
       throw new FunctionException(exception);
     }
+  }
+
+  private ResultCollector executeOnServer(Function function, ResultCollector rc, byte hasResult,
+      long timeout, TimeUnit unit) {
+    return executeOnServer(function, null, rc, hasResult, false, false, timeout, unit);
+  }
+
+  private ResultCollector executeOnServer(String functionId, ResultCollector rc, byte hasResult,
+      boolean isHA, boolean optimizeForWrite, long timeout, TimeUnit unit) {
+    return executeOnServer(null, functionId, rc, hasResult, isHA, optimizeForWrite, timeout, unit);
   }
 
   private void executeOnServerNoAck(Function function, byte hasResult) {
@@ -331,7 +362,7 @@ public class ServerFunctionExecutor extends AbstractExecution {
   }
 
   @Override
-  public ResultCollector execute(final String functionName) {
+  public ResultCollector execute(final String functionName, long timeout, TimeUnit unit) {
     if (functionName == null) {
       throw new FunctionException(
           "The input function for the execute function request is null");
@@ -340,7 +371,6 @@ public class ServerFunctionExecutor extends AbstractExecution {
     Function functionObject = FunctionService.getFunction(functionName);
     if (functionObject == null) {
       byte[] functionAttributes = getFunctionAttributes(functionName);
-
       if (functionAttributes == null) {
         // Set authentication properties before executing the internal function.
         try {
@@ -362,9 +392,15 @@ public class ServerFunctionExecutor extends AbstractExecution {
       boolean isHA = functionAttributes[1] == 1;
       boolean hasResult = functionAttributes[0] == 1;
       boolean optimizeForWrite = functionAttributes[2] == 1;
-      return executeFunction(functionName, hasResult, isHA, optimizeForWrite);
+      return executeFunction(functionName, hasResult, isHA, optimizeForWrite, timeout, unit);
     } else {
-      return executeFunction(functionObject);
+      return executeFunction(functionObject, timeout, unit);
     }
+
+  }
+
+  @Override
+  public ResultCollector execute(final String functionName) {
+    return execute(functionName, 0, null);
   }
 }

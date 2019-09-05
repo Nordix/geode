@@ -123,6 +123,7 @@ public class ExecuteFunctionOp {
         }
       } while (reexecute);
     }
+    rc.endResults();
   }
 
   private static List constructAndGetFunctionTasks(final PoolImpl pool,

@@ -16,6 +16,10 @@
 package org.apache.geode.internal.cache.execute;
 
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.Logger;
 
@@ -46,8 +50,10 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
 
   private final LocalRegion region;
   private boolean executeOnBucketSet = false;
+  private ExecutorService executorService;
 
-  ServerRegionFunctionExecutor(Region r, ProxyCache proxyCache) {
+
+  ServerRegionFunctionExecutor(Region r, ProxyCache proxyCache, ExecutorService executorService) {
     if (r == null) {
       throw new IllegalArgumentException(
           String.format("The input %s for the execute function request is null",
@@ -55,6 +61,7 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
     }
     region = (LocalRegion) r;
     this.proxyCache = proxyCache;
+    this.executorService = executorService;
   }
 
   private ServerRegionFunctionExecutor(ServerRegionFunctionExecutor serverRegionFunctionExecutor,
@@ -66,6 +73,7 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
     filter.addAll(serverRegionFunctionExecutor.filter);
     this.args = args;
     executeOnBucketSet = serverRegionFunctionExecutor.executeOnBucketSet;
+    this.executorService = serverRegionFunctionExecutor.executorService;
   }
 
   private ServerRegionFunctionExecutor(ServerRegionFunctionExecutor serverRegionFunctionExecutor,
@@ -89,6 +97,8 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
     filter.addAll(serverRegionFunctionExecutor.filter);
     this.rc = rc != null ? new SynchronizedResultCollector(rc) : null;
     executeOnBucketSet = serverRegionFunctionExecutor.executeOnBucketSet;
+    executorService = serverRegionFunctionExecutor.executorService;
+
   }
 
   private ServerRegionFunctionExecutor(ServerRegionFunctionExecutor serverRegionFunctionExecutor,
@@ -100,6 +110,8 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
     filter.clear();
     filter.addAll(filter2);
     executeOnBucketSet = serverRegionFunctionExecutor.executeOnBucketSet;
+    executorService = serverRegionFunctionExecutor.executorService;
+
   }
 
   private ServerRegionFunctionExecutor(ServerRegionFunctionExecutor serverRegionFunctionExecutor,
@@ -111,6 +123,7 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
     filter.clear();
     filter.addAll(bucketsAsFilter);
     this.executeOnBucketSet = executeOnBucketSet;
+    executorService = serverRegionFunctionExecutor.executorService;
   }
 
   @Override
@@ -135,7 +148,7 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
   }
 
   @Override
-  protected ResultCollector executeFunction(final Function function) {
+  protected ResultCollector executeFunction(final Function function, long timeout, TimeUnit unit) {
     byte hasResult = 0;
     try {
       if (proxyCache != null) {
@@ -149,9 +162,9 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
         hasResult = 1;
         if (rc == null) { // Default Result Collector
           ResultCollector defaultCollector = new DefaultResultCollector();
-          return executeOnServer(function, defaultCollector, hasResult);
+          return executeOnServer(function, defaultCollector, hasResult, timeout, unit);
         } else { // Custome Result COllector
-          return executeOnServer(function, rc, hasResult);
+          return executeOnServer(function, rc, hasResult, timeout, unit);
         }
       } else { // No results
         executeOnServerNoAck(function, hasResult);
@@ -163,7 +176,7 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
   }
 
   protected ResultCollector executeFunction(final String functionId, boolean resultReq,
-      boolean isHA, boolean optimizeForWrite) {
+      boolean isHA, boolean optimizeForWrite, long timeout, TimeUnit unit) {
     try {
       if (proxyCache != null) {
         if (proxyCache.isClosed()) {
@@ -176,9 +189,10 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
         hasResult = 1;
         if (rc == null) { // Default Result Collector
           ResultCollector defaultCollector = new DefaultResultCollector();
-          return executeOnServer(functionId, defaultCollector, hasResult, isHA, optimizeForWrite);
+          return executeOnServer(functionId, defaultCollector, hasResult, isHA, optimizeForWrite,
+              timeout, unit);
         } else { // Custome Result COllector
-          return executeOnServer(functionId, rc, hasResult, isHA, optimizeForWrite);
+          return executeOnServer(functionId, rc, hasResult, isHA, optimizeForWrite, timeout, unit);
         }
       } else { // No results
         executeOnServerNoAck(functionId, hasResult, isHA, optimizeForWrite);
@@ -189,18 +203,57 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
     }
   }
 
-  private ResultCollector executeOnServer(Function function, ResultCollector collector,
-      byte hasResult) throws FunctionException {
+  private ResultCollector executeOnServer(Function function, String functionId,
+      ResultCollector collector,
+      byte hasResult, boolean isHA, boolean optimizeForWrite, long timeout, TimeUnit unit)
+      throws FunctionException {
     ServerRegionProxy srp = getServerRegionProxy();
-    FunctionStats stats = FunctionStats.getFunctionStats(function.getId(), region.getSystem());
+    final String localFunctionId = (function != null) ? function.getId() : functionId;
+    FunctionStats stats = FunctionStats.getFunctionStats(localFunctionId, region.getSystem());
+    int socketReadTimeout = getTimeoutMs();
     try {
       validateExecution(function, null);
       long start = stats.startTime();
       stats.startFunctionExecution(true);
-      srp.executeFunction(function, this, collector, hasResult,
-          getTimeoutMs());
-      stats.endFunctionExecution(start, true);
-      return collector;
+      // TODO alberto.gomez: Do we really want to have the following if-else?
+      // If timeout > 0 then the external behavior would be blocking as it can be seen below
+      // although the code would be more efficient (less threads) with this "if-else".
+      if (getIsAsyncClientFunctionExecution()) {
+        ProxyResultCollector proxyCollector = new ProxyResultCollector();
+        final Callable callableObj;
+        if (function != null) {
+          callableObj = () -> {
+            srp.executeFunction(function, this, collector, hasResult, socketReadTimeout);
+            stats.endFunctionExecution(start, true);
+            return collector;
+          };
+        } else {
+          callableObj = () -> {
+            srp.executeFunction(functionId, this, collector, hasResult, isHA,
+                optimizeForWrite, socketReadTimeout);
+            stats.endFunctionExecution(start, true);
+            return collector;
+          };
+        }
+        Future<ResultCollector> future =
+            (Future<ResultCollector>) executorService.submit(callableObj);
+        proxyCollector.setFuture(future);
+        if (timeout > 0) {
+          proxyCollector.getResult(timeout, unit);
+        }
+        return proxyCollector;
+      } else {
+        if (function != null) {
+          srp.executeFunction(function, this, collector, hasResult, socketReadTimeout);
+          stats.endFunctionExecution(start, true);
+          return collector;
+        } else {
+          srp.executeFunction(functionId, this, collector, hasResult, isHA,
+              optimizeForWrite, socketReadTimeout);
+          stats.endFunctionExecution(start, true);
+          return collector;
+        }
+      }
     } catch (FunctionException functionException) {
       stats.endFunctionExecutionWithException(true);
       throw functionException;
@@ -208,30 +261,19 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
       stats.endFunctionExecutionWithException(true);
       throw new FunctionException(exception);
     }
+  }
+
+  private ResultCollector executeOnServer(Function function, ResultCollector collector,
+      byte hasResult, long timeout, TimeUnit unit) throws FunctionException {
+    return executeOnServer(function, null, collector, hasResult, false, false, timeout, unit);
   }
 
   private ResultCollector executeOnServer(String functionId, ResultCollector collector,
-      byte hasResult, boolean isHA, boolean optimizeForWrite) throws FunctionException {
-
-    ServerRegionProxy srp = getServerRegionProxy();
-    FunctionStats stats = FunctionStats.getFunctionStats(functionId, region.getSystem());
-    try {
-      validateExecution(null, null);
-      long start = stats.startTime();
-      stats.startFunctionExecution(true);
-      srp.executeFunction(functionId, this, collector, hasResult, isHA,
-          optimizeForWrite, getTimeoutMs());
-      stats.endFunctionExecution(start, true);
-      return collector;
-    } catch (FunctionException functionException) {
-      stats.endFunctionExecutionWithException(true);
-      throw functionException;
-    } catch (Exception exception) {
-      stats.endFunctionExecutionWithException(true);
-      throw new FunctionException(exception);
-    }
+      byte hasResult, boolean isHA, boolean optimizeForWrite, long timeout, TimeUnit unit)
+      throws FunctionException {
+    return executeOnServer(null, functionId, collector, hasResult, isHA, optimizeForWrite,
+        timeout, unit);
   }
-
 
   private void executeOnServerNoAck(Function function, byte hasResult) throws FunctionException {
     ServerRegionProxy srp = getServerRegionProxy();
@@ -343,6 +385,11 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
 
   @Override
   public ResultCollector execute(final String functionName) {
+    return execute(functionName, 0, null);
+  }
+
+  @Override
+  public ResultCollector execute(final String functionName, long timeout, TimeUnit unit) {
     if (functionName == null) {
       throw new FunctionException(
           "The input function for the execute function request is null");
@@ -374,9 +421,9 @@ public class ServerRegionFunctionExecutor extends AbstractExecution {
       boolean isHA = functionAttributes[1] == 1;
       boolean hasResult = functionAttributes[0] == 1;
       boolean optimizeForWrite = functionAttributes[2] == 1;
-      return executeFunction(functionName, hasResult, isHA, optimizeForWrite);
+      return executeFunction(functionName, hasResult, isHA, optimizeForWrite, timeout, unit);
     } else {
-      return executeFunction(functionObject);
+      return executeFunction(functionObject, timeout, unit);
     }
   }
 

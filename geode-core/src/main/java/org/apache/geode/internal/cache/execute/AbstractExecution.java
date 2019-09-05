@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.Logger;
 
@@ -58,6 +59,9 @@ public abstract class AbstractExecution implements InternalExecution {
       DistributionConfig.GEMFIRE_PREFIX + "CLIENT_FUNCTION_TIMEOUT";
   private static final Integer timeoutMsSystemProperty =
       Integer.getInteger(CLIENT_FUNCTION_TIMEOUT_SYSTEM_PROPERTY, DEFAULT_CLIENT_FUNCTION_TIMEOUT);
+
+  private static final String CLIENT_ASYNC_FUNCTION_EXECUTION_SYSTEM_PROPERTY =
+      DistributionConfig.GEMFIRE_PREFIX + "CLIENT_ASYNC_FUNCTION_EXECUTION";
 
   boolean isMemberMappedArgument;
 
@@ -101,6 +105,8 @@ public abstract class AbstractExecution implements InternalExecution {
   protected ProxyCache proxyCache;
 
   private final int timeoutMs;
+
+  private final boolean isAsyncClientFunctionExecution;
 
   @MakeNotStatic
   private static final ConcurrentHashMap<String, byte[]> idToFunctionAttributes =
@@ -161,6 +167,9 @@ public abstract class AbstractExecution implements InternalExecution {
   protected AbstractExecution() {
     timeoutMs =
         timeoutMsSystemProperty >= 0 ? timeoutMsSystemProperty : DEFAULT_CLIENT_FUNCTION_TIMEOUT;
+
+    this.isAsyncClientFunctionExecution =
+        Boolean.getBoolean(CLIENT_ASYNC_FUNCTION_EXECUTION_SYSTEM_PROPERTY);
   }
 
   protected AbstractExecution(AbstractExecution ae) {
@@ -180,6 +189,7 @@ public abstract class AbstractExecution implements InternalExecution {
     }
     isFnSerializationReqd = ae.isFnSerializationReqd;
     timeoutMs = ae.timeoutMs;
+    isAsyncClientFunctionExecution = ae.isAsyncClientFunctionExecution;
   }
 
   protected AbstractExecution(AbstractExecution ae, boolean isReExecute) {
@@ -354,6 +364,11 @@ public abstract class AbstractExecution implements InternalExecution {
 
   @Override
   public ResultCollector execute(final String functionName) {
+    return execute(functionName, getTimeoutMs(), TimeUnit.MILLISECONDS);
+  }
+
+  @Override
+  public ResultCollector execute(final String functionName, long timeout, TimeUnit unit) {
     if (functionName == null) {
       throw new FunctionException(
           "The input function for the execute function request is null");
@@ -366,11 +381,12 @@ public abstract class AbstractExecution implements InternalExecution {
               functionName));
     }
 
-    return executeFunction(functionObject);
+    return executeFunction(functionObject, timeout, unit);
   }
 
   @Override
-  public ResultCollector execute(Function function) throws FunctionException {
+  public ResultCollector execute(Function function, long timeout, TimeUnit unit)
+      throws FunctionException {
     if (function == null) {
       throw new FunctionException(
           "The input function for the execute function request is null");
@@ -386,7 +402,12 @@ public abstract class AbstractExecution implements InternalExecution {
           "The Function#getID() returned null");
     }
     isFnSerializationReqd = true;
-    return executeFunction(function);
+    return executeFunction(function, timeout, unit);
+  }
+
+  @Override
+  public ResultCollector execute(Function function) throws FunctionException {
+    return execute(function, getTimeoutMs(), TimeUnit.MILLISECONDS);
   }
 
   @Override
@@ -420,7 +441,7 @@ public abstract class AbstractExecution implements InternalExecution {
     return ignoreDepartedMembers;
   }
 
-  protected abstract ResultCollector executeFunction(Function fn);
+  protected abstract ResultCollector executeFunction(Function fn, long timeout, TimeUnit unit);
 
   /**
    * validates whether a function should execute in presence of transaction and HeapCritical
@@ -503,5 +524,14 @@ public abstract class AbstractExecution implements InternalExecution {
    */
   int getTimeoutMs() {
     return timeoutMs;
+  }
+
+  /**
+   * Get if execution of functions is asynchronous
+   *
+   * @return timeout in milliseconds.
+   */
+  protected boolean getIsAsyncClientFunctionExecution() {
+    return isAsyncClientFunctionExecution;
   }
 }

@@ -15,6 +15,7 @@
 package org.apache.geode.internal.cache.execute;
 
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.geode.cache.LowMemoryException;
 import org.apache.geode.cache.Region;
@@ -150,7 +151,7 @@ public class DistributedRegionFunctionExecutor extends AbstractExecution {
   }
 
   @Override
-  public ResultCollector execute(final String functionName) {
+  public ResultCollector execute(final String functionName, long timeout, TimeUnit unit) {
     if (functionName == null) {
       throw new FunctionException(
           "The input function for the execute function request is null");
@@ -166,11 +167,16 @@ public class DistributedRegionFunctionExecutor extends AbstractExecution {
       throw new FunctionException(
           "Function execution on region with DataPolicy.NORMAL is not supported");
     }
-    return executeFunction(functionObject);
+    return executeFunction(functionObject, timeout, unit);
   }
 
   @Override
-  public ResultCollector execute(final Function function) {
+  public ResultCollector execute(final String functionName) {
+    return execute(functionName, getTimeoutMs(), TimeUnit.MILLISECONDS);
+  }
+
+  @Override
+  public ResultCollector execute(final Function function, long timeout, TimeUnit unit) {
     if (function == null) {
       throw new FunctionException(
           String.format("The input %s for the execute function request is null",
@@ -190,11 +196,16 @@ public class DistributedRegionFunctionExecutor extends AbstractExecution {
           "The Function#getID() returned null");
     }
     this.isFnSerializationReqd = true;
-    return executeFunction(function);
+    return executeFunction(function, timeout, unit);
   }
 
   @Override
-  protected ResultCollector executeFunction(Function function) {
+  public ResultCollector execute(final Function function) {
+    return execute(function, getTimeoutMs(), TimeUnit.MILLISECONDS);
+  }
+
+  @Override
+  protected ResultCollector executeFunction(Function function, long timeout, TimeUnit unit) {
     if (function.hasResult()) { // have Results
       if (this.rc == null) { // Default Result Collector
         ResultCollector defaultCollector = new DefaultResultCollector();

@@ -28,8 +28,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
-
 import javax.management.ObjectName;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;

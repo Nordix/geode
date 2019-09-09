@@ -33,7 +33,6 @@ import org.apache.geode.distributed.internal.InternalDistributedSystem;
 import org.apache.geode.internal.AvailablePortHelper;
 import org.apache.geode.internal.cache.GemFireCacheImpl;
 import org.apache.geode.internal.cache.InternalCache;
-import org.apache.geode.internal.cache.tier.sockets.CacheServerHelper;
 import org.apache.geode.pdx.PdxSerializer;
 
 /**
@@ -187,15 +186,8 @@ public class ServerStarterRule extends MemberStarterRule<ServerStarterRule> impl
     jmxPort = config.getJmxManagerPort();
     httpPort = config.getHttpServicePort();
 
-    if (serverCount > 1 && memberPort != 0) {
-      throw new IllegalStateException("can't specify a member port when you have multiple port");
-    }
-
-    for (int i = 0; i < serverCount; i++) {
-      CacheServer server = cache.addCacheServer();
-      if (i == 0) {
-        CacheServerHelper.setIsDefaultServer(server);
-      }
+    if (!noCacheServer) {
+      server = cache.addCacheServer();
       // memberPort is by default zero, which translates to "randomly select an available port,"
       // which is why it is updated after this try block
       server.setPort(memberPort);

@@ -274,4 +274,5 @@ public class JMXMBeanReconnectDUnitTest {
   private static Predicate<ObjectName> excludingBeansFor(String memberName) {
     return b -> !b.getCanonicalName().contains("member=" + memberName);
   }
+
 }

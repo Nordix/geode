@@ -120,6 +120,8 @@ public abstract class MemberStarterRule<T> extends SerializableExternalResource 
     // initial values
     properties.setProperty(MCAST_PORT, "0");
     properties.setProperty(LOCATORS, "");
+    // set the reconnect wait time to 5 seconds in case some tests needs to reconnect in a timely
+    // manner.
     properties.setProperty(MAX_WAIT_TIME_RECONNECT, "5000");
     systemProperties.setProperty(ClusterManagementService.FEATURE_FLAG, "true");
   }
@@ -486,6 +488,7 @@ public abstract class MemberStarterRule<T> extends SerializableExternalResource 
         WAIT_UNTIL_TIMEOUT, TimeUnit.SECONDS);
   }
 
+
   /**
    * This method wraps an {@link GeodeAwaitility#await()} call for more meaningful error
    * reporting.
@@ -544,6 +547,7 @@ public abstract class MemberStarterRule<T> extends SerializableExternalResource 
     MembershipManagerHelper
         .crashDistributedSystem(InternalDistributedSystem.getConnectedInstance());
   }
+
 
   public abstract void waitTilFullyReconnected();
 

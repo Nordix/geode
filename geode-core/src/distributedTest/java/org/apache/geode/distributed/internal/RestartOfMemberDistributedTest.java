@@ -76,7 +76,7 @@ public class RestartOfMemberDistributedTest {
         return true;
       });
       clusterStartupRule.startServerVM(1, properties, locator2port);
-      locators.get(1).waitTilFullyReconnected();
+      locators.get(1).waitTilLocatorFullyReconnected();
     } finally {
       exp1.remove();
       exp2.remove();

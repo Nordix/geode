@@ -14,14 +14,11 @@
  */
 package org.apache.geode.test.junit.rules;
 
-
-import static java.util.stream.Collectors.toList;
 import static org.apache.geode.test.awaitility.GeodeAwaitility.await;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -107,25 +104,6 @@ public class MBeanServerConnectionRule extends DescribedExternalResource {
       throws IOException, MalformedObjectNameException {
     return JMX.newMBeanProxy(con, getObjectName(proxyClass, beanQueryName), proxyClass);
   }
-
-  /**
-   * Returns a list of remote MBeans from the given member. The MBeans are filtered to exclude the
-   * member's local MBeans. The resulting list includes only MBeans that all locators in the system
-   * should have.
-   **/
-  public List<ObjectName> getGemfireFederatedBeans() throws IOException {
-    Set<ObjectName> allBeans = con.queryNames(null, null);
-    // Each locator will have a "Manager" bean that is a part of the above query,
-    // representing the ManagementAdapter.
-    // This bean is registered (and so included in its own queries),
-    // but *not* federated (and so is not included in another locator's bean queries).
-    return allBeans.stream()
-        .filter(b -> b.toString().contains("GemFire"))
-        .filter(b -> !b.toString().contains("service=Manager,type=Member,member=locator"))
-        .sorted()
-        .collect(toList());
-  }
-
 
   /**
    * Retrieve a new proxy MBean

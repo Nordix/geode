@@ -548,9 +548,6 @@ public abstract class MemberStarterRule<T> extends SerializableExternalResource 
         .crashDistributedSystem(InternalDistributedSystem.getConnectedInstance());
   }
 
-
-  public abstract void waitTilFullyReconnected();
-
   @Override
   public File getWorkingDir() {
     return new File(System.getProperty("user.dir"));

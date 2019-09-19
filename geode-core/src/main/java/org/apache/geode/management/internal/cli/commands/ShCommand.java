@@ -71,8 +71,13 @@ public class ShCommand extends OfflineGfshCommand {
     BufferedReader input = new BufferedReader(new InputStreamReader(proc.getInputStream()));
 
     String lineRead;
-    while ((lineRead = input.readLine()) != null) {
-      result.addLine(lineRead);
+    try {
+      while ((lineRead = input.readLine()) != null) {
+        result.addLine(lineRead);
+      }
+    } catch (NullPointerException exc) {
+      gfsh.logWarning("The command '" + userCommand
+          + "' did not complete successfully. Try using '--use-console' option.", null);
     }
 
     proc.getOutputStream().close();

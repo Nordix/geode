@@ -17,7 +17,6 @@ package org.apache.geode.internal.cache;
 import static org.apache.geode.cache.asyncqueue.internal.AsyncEventQueueImpl.getSenderIdFromAsyncEventQueueId;
 import static org.apache.geode.internal.statistics.StatisticsClockFactory.disabledClock;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -308,11 +307,4 @@ public class PartitionedRegionTest {
             .isNotEmpty().containsExactly("parallel", "anotherParallel");
   }
 
-  @Test
-  public void getLocalSizeDoesNotThrowIfRegionUninitialized() {
-    partitionedRegion = new PartitionedRegion("region", attributesFactory.create(), null,
-        internalCache, mock(InternalRegionArguments.class));
-
-    assertThatCode(partitionedRegion::getLocalSize).doesNotThrowAnyException();
-  }
 }

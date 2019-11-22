@@ -33,20 +33,25 @@ import org.junit.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import org.apache.geode.cache.Operation;
+import org.apache.geode.distributed.internal.InternalDistributedSystem;
 import org.apache.geode.internal.cache.EntryEventImpl;
 import org.apache.geode.internal.cache.EventID;
+import org.apache.geode.internal.cache.GemFireCacheImpl;
 import org.apache.geode.internal.cache.LocalRegion;
 import org.apache.geode.internal.cache.ha.ThreadIdentifier;
 import org.apache.geode.internal.cache.wan.AbstractGatewaySender;
 import org.apache.geode.internal.cache.wan.GatewaySenderEventImpl;
 import org.apache.geode.internal.cache.wan.GatewaySenderStats;
 import org.apache.geode.internal.logging.LogService;
+import org.apache.geode.test.fake.Fakes;
 
 public class SerialGatewaySenderEventProcessorJUnitTest {
 
   private AbstractGatewaySender sender;
 
   private TestSerialGatewaySenderEventProcessor processor;
+
+  private GemFireCacheImpl cache;
 
   private static final Logger logger = LogService.getLogger();
 

@@ -110,13 +110,11 @@ public class SerialAsyncEventQueueImpl extends AbstractGatewaySender {
       }
       new UpdateAttributesProcessor(this).distribute(false);
 
-
       InternalDistributedSystem system =
           (InternalDistributedSystem) this.cache.getDistributedSystem();
       system.handleResourceEvent(ResourceEvent.GATEWAYSENDER_START, this);
 
-      logger
-          .info("Started {}", this);
+      logger.info("Started {}", this);
 
       enqueueTempEvents();
     } finally {
@@ -195,12 +193,15 @@ public class SerialAsyncEventQueueImpl extends AbstractGatewaySender {
     InternalDistributedSystem system =
         (InternalDistributedSystem) this.cache.getDistributedSystem();
     system.handleResourceEvent(ResourceEvent.GATEWAYSENDER_STOP, this);
+
+    this.eventProcessor = null;
   }
 
   @Override
   public String toString() {
     StringBuffer sb = new StringBuffer();
-    sb.append("SerialGatewaySender{");
+    sb.append(getClass().getSimpleName());
+    sb.append("{");
     sb.append("id=" + getId());
     sb.append(",remoteDsId=" + getRemoteDSId());
     sb.append(",isRunning =" + isRunning());

@@ -25,6 +25,7 @@ import org.junit.experimental.categories.Category;
 import org.apache.geode.cache.AttributesFactory;
 import org.apache.geode.cache.PartitionAttributesFactory;
 import org.apache.geode.cache.Region;
+import org.apache.geode.cache.RegionFactory;
 import org.apache.geode.cache.wan.GatewaySender;
 import org.apache.geode.cache.wan.GatewaySenderFactory;
 import org.apache.geode.internal.cache.ColocationHelper;
@@ -63,8 +64,11 @@ public class ParallelWANPersistenceEnabledGatewaySenderDUnitTest extends WANTest
       try {
         GatewaySender sender1 = fact.create("NYSender", 2);
 
-        AttributesFactory rFact = new AttributesFactory();
-        rFact.addGatewaySenderId(sender1.getId());
+
+        RegionFactory regionFactory = cache.createRegionFactory();
+        regionFactory.addGatewaySenderId(sender1.getId());
+
+
 
         PartitionAttributesFactory pFact = new PartitionAttributesFactory();
         pFact.setTotalNumBuckets(100);

@@ -126,13 +126,13 @@ public class CacheClientNotifier {
   private static volatile CacheClientNotifier ccnSingleton;
 
   private final SocketMessageWriter socketMessageWriter = new SocketMessageWriter();
-  private final ClientRegistrationEventQueueManager clientRegistrationEventQueueManager;
+  private final ClientRegistrationEventQueueManager registrationQueueManager =
+      new ClientRegistrationEventQueueManager();
 
   /**
    * Factory method to construct a CacheClientNotifier {@code CacheClientNotifier} instance.
    *
    * @param cache The GemFire {@code InternalCache}
-   * @param clientRegistrationEventQueueManager Manages temporary registration queues for clients
    * @return A {@code CacheClientNotifier} instance
    */
   public static synchronized CacheClientNotifier getInstance(InternalCache cache,
@@ -178,7 +178,7 @@ public class CacheClientNotifier {
     try {
       if (isClientPermitted(clientRegistrationMetadata, clientProxyMembershipID)) {
         ClientRegistrationEventQueueManager.ClientRegistrationEventQueue clientRegistrationEventQueue =
-            clientRegistrationEventQueueManager.create(clientProxyMembershipID,
+            registrationQueueManager.create(clientProxyMembershipID,
                 new ConcurrentLinkedQueue<>(),
                 new ReentrantReadWriteLock());
 
@@ -186,7 +186,7 @@ public class CacheClientNotifier {
           registerClientInternal(clientRegistrationMetadata, socket, isPrimary, acceptorId,
               notifyBySubscription);
         } finally {
-          clientRegistrationEventQueueManager.drain(clientRegistrationEventQueue, this);
+          registrationQueueManager.drain(clientRegistrationEventQueue, this);
         }
       }
     } catch (AuthenticationRequiredException ex) {
@@ -682,7 +682,7 @@ public class CacheClientNotifier {
       conflatable = wrapper;
     }
 
-    clientRegistrationEventQueueManager.add(event, conflatable, filterClients, this);
+    registrationQueueManager.add(event, conflatable, filterClients, this);
 
     singletonRouteClientMessage(conflatable, filterClients);
 

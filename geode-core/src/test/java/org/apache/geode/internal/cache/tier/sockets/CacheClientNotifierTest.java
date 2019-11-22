@@ -50,6 +50,7 @@ import org.apache.geode.internal.cache.FilterProfile;
 import org.apache.geode.internal.cache.FilterRoutingInfo;
 import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.cache.InternalCacheEvent;
+import org.apache.geode.internal.cache.RegionQueueException;
 import org.apache.geode.internal.statistics.StatisticsClock;
 import org.apache.geode.test.fake.Fakes;
 
@@ -152,6 +153,7 @@ public class CacheClientNotifierTest {
     Socket socket = mock(Socket.class);
     ConnectionListener connectionListener = mock(ConnectionListener.class);
     ClientRegistrationMetadata clientRegistrationMetadata = mock(ClientRegistrationMetadata.class);
+    StatisticsClock statisticsClock = mock(StatisticsClock.class);
     ClientProxyMembershipID clientProxyMembershipID = mock(ClientProxyMembershipID.class);
     ClientRegistrationEventQueueManager clientRegistrationEventQueueManager =
         mock(ClientRegistrationEventQueueManager.class);
@@ -164,7 +166,7 @@ public class CacheClientNotifierTest {
         .thenReturn(clientRegistrationEventQueue);
 
     CacheClientNotifier cacheClientNotifier = CacheClientNotifier.getInstance(internalCache,
-        clientRegistrationEventQueueManager, cacheServerStats, 0, 0,
+        clientRegistrationEventQueueManager, statisticsClock, cacheServerStats, 0, 0,
         connectionListener, null, false);
     CacheClientNotifier cacheClientNotifierSpy = spy(cacheClientNotifier);
 

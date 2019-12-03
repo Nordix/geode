@@ -56,7 +56,7 @@ public class ConcurrentParallelGatewaySenderOperation_2_DUnitTest extends WANTes
     IgnoredException.addIgnoredException("Unexpected IOException");
   }
 
-  @Ignore
+  @Ignore("Disabled until fixed")
   @Test
   public void shuttingOneSenderInAVMShouldNotAffectOthersBatchRemovalThread() {
     Integer lnport = (Integer) vm0.invoke(() -> WANTestBase.createFirstLocatorWithDSId(1));

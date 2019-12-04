@@ -354,7 +354,6 @@ public class OffHeapManagementDUnitTest extends CacheTestCase {
   /**
    * Asserts that a monitor assigned to the OffHeapObjects attribute is triggered.
    */
-  @Ignore("Disable until fixed")
   @Test
   public void testOffHeapObjectsMonitoring() throws Exception {
     // Setup off-heap memory for cache

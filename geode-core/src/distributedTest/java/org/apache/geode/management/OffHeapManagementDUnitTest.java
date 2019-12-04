@@ -40,6 +40,7 @@ import javax.management.ObjectName;
 import com.google.common.base.Stopwatch;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -353,6 +354,7 @@ public class OffHeapManagementDUnitTest extends CacheTestCase {
   /**
    * Asserts that a monitor assigned to the OffHeapObjects attribute is triggered.
    */
+  @Ignore("Disable until fixed")
   @Test
   public void testOffHeapObjectsMonitoring() throws Exception {
     // Setup off-heap memory for cache

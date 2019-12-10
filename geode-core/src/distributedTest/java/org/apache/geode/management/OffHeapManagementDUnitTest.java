@@ -40,7 +40,6 @@ import javax.management.ObjectName;
 import com.google.common.base.Stopwatch;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;

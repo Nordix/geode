@@ -30,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -51,7 +50,6 @@ import org.apache.geode.test.dunit.ThreadUtils;
 import org.apache.geode.test.dunit.VM;
 import org.apache.geode.test.junit.categories.LuceneTest;
 
-@Ignore("Disable until fixed")
 @Category({LuceneTest.class})
 @RunWith(JUnitParamsRunner.class)
 public class LuceneIndexDestroyDUnitTest extends LuceneDUnitTest {

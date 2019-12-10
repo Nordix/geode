@@ -1068,7 +1068,7 @@ public class WANTestBase extends DistributedTestCase {
     for (AsyncInvocation invocation : tasks) {
       try {
         invocation.await();
-      } catch (InterruptedException e) {
+      } catch (InterruptedException | ExecutionException e) {
         fail("Starting senders was interrupted");
       }
     }

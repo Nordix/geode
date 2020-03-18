@@ -404,7 +404,9 @@ public class ServerLocator implements RestartableTcpHandler, DistributionAdvisee
       CacheServerProfile bp = (CacheServerProfile) profile;
       ServerLocation location = buildServerLocation(bp);
       String[] groups = bp.getGroups();
-      loadSnapshot.addServer(location, groups, bp.getInitialLoad(), bp.getLoadPollInterval());
+      loadSnapshot.addServer(
+          location, bp.getDistributedMember().getUniqueId(), groups,
+          bp.getInitialLoad(), bp.getLoadPollInterval());
       if (logger.isDebugEnabled()) {
         logger.debug("ServerLocator: Received load from a new server {}, {}", location,
             bp.getInitialLoad());
@@ -422,7 +424,7 @@ public class ServerLocator implements RestartableTcpHandler, DistributionAdvisee
       CacheServerProfile bp = (CacheServerProfile) profile;
       // InternalDistributedMember id = bp.getDistributedMember();
       ServerLocation location = buildServerLocation(bp);
-      loadSnapshot.removeServer(location);
+      loadSnapshot.removeServer(location, bp.getDistributedMember().getUniqueId());
       if (logger.isDebugEnabled()) {
         logger.debug("ServerLocator: server departed {}", location);
       }
@@ -440,12 +442,14 @@ public class ServerLocator implements RestartableTcpHandler, DistributionAdvisee
         .warning("ServerLocator - unexpected profile update.");
   }
 
-  public void updateLoad(ServerLocation location, ServerLoad load, List clientIds) {
+  public void updateLoad(ServerLocation location, String memberId, ServerLoad load,
+      List clientIds) {
     if (getLogWriter().fineEnabled()) {
       getLogWriter()
-          .fine("ServerLocator: Received a load update from " + location + ", " + load);
+          .fine("ServerLocator: Received a load update from " + location + " at " + memberId + " , "
+              + load);
     }
-    loadSnapshot.updateLoad(location, load, clientIds);
+    loadSnapshot.updateLoad(location, memberId, load, clientIds);
     this.stats.incServerLoadUpdates();
     logServers();
   }

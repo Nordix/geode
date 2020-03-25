@@ -50,16 +50,8 @@ public interface DataSerializableFixedID extends SerializationVersions {
   // NOTE, codes < -65536 will take 4 bytes to serialize
   // NOTE, codes < -128 will take 2 bytes to serialize
 
-  /*
-   * In the class to be serialized, add public FOO(DataInput in) throws IOException,
-   * ClassNotFoundException { fromData(in); }
-   *
-   * public int getDSFID() { return FOO; }
-   *
-   * In DataSerializableFixedId, allocate an ID for the class byte FOO = -54;
-   *
-   * In DSFIDFactory, add a case for the new class case FOO: return new FOO(in);
-   */
+  short DISTRIBUTED_PING_MESSAGE = -160;
+
   short CREATE_REGION_MESSAGE_LUCENE = -159;
   short FINAL_CHECK_PASSED_MESSAGE = -158;
   short NETWORK_PARTITION_MESSAGE = -157;

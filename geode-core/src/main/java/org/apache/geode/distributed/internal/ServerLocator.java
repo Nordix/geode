@@ -49,7 +49,6 @@ import org.apache.geode.cache.server.ServerLoad;
 import org.apache.geode.distributed.DistributedMember;
 import org.apache.geode.distributed.DistributedSystem;
 import org.apache.geode.distributed.internal.DistributionAdvisor.Profile;
-import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
 import org.apache.geode.distributed.internal.tcpserver.TcpServer;
 import org.apache.geode.internal.cache.CacheServerAdvisor.CacheServerProfile;
 import org.apache.geode.internal.cache.ControllerAdvisor;
@@ -406,7 +405,7 @@ public class ServerLocator implements RestartableTcpHandler, DistributionAdvisee
       ServerLocation location = buildServerLocation(bp);
       String[] groups = bp.getGroups();
       loadSnapshot.addServer(
-          location, bp.getDistributedMember(), groups,
+          location, bp.getDistributedMember().getId(), groups,
           bp.getInitialLoad(), bp.getLoadPollInterval());
       if (logger.isDebugEnabled()) {
         logger.debug("ServerLocator: Received load from a new server {}, {}", location,
@@ -425,7 +424,7 @@ public class ServerLocator implements RestartableTcpHandler, DistributionAdvisee
       CacheServerProfile bp = (CacheServerProfile) profile;
       // InternalDistributedMember id = bp.getDistributedMember();
       ServerLocation location = buildServerLocation(bp);
-      loadSnapshot.removeServer(location, bp.getDistributedMember());
+      loadSnapshot.removeServer(location, bp.getDistributedMember().getId());
       if (logger.isDebugEnabled()) {
         logger.debug("ServerLocator: server departed {}", location);
       }
@@ -443,8 +442,7 @@ public class ServerLocator implements RestartableTcpHandler, DistributionAdvisee
         .warning("ServerLocator - unexpected profile update.");
   }
 
-  public void updateLoad(ServerLocation location, InternalDistributedMember memberId,
-      ServerLoad load,
+  public void updateLoad(ServerLocation location, String memberId, ServerLoad load,
       List clientIds) {
     if (getLogWriter().fineEnabled()) {
       getLogWriter()

@@ -425,7 +425,7 @@ public class ServerLocator implements RestartableTcpHandler, DistributionAdvisee
       CacheServerProfile bp = (CacheServerProfile) profile;
       // InternalDistributedMember id = bp.getDistributedMember();
       ServerLocation location = buildServerLocation(bp);
-      loadSnapshot.removeServer(bp.getDistributedMember());
+      loadSnapshot.removeServer(location, bp.getDistributedMember());
       if (logger.isDebugEnabled()) {
         logger.debug("ServerLocator: server departed {}", location);
       }

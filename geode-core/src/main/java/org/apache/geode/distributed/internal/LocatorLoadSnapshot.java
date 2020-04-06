@@ -49,7 +49,7 @@ public class LocatorLoadSnapshot {
 
   public static final float DEFAULT_LOAD_IMBALANCE_THRESHOLD = 10;
 
-  private final Map<InternalDistributedMember, String[]> serverGroupMap = new HashMap<>();
+  private final Map<ServerLocation, String[]> serverGroupMap = new HashMap<>();
 
   private final Map<String, Map<InternalDistributedMember, LoadHolder>> connectionLoadMap =
       new HashMap<>();
@@ -98,7 +98,7 @@ public class LocatorLoadSnapshot {
   public synchronized void addServer(ServerLocation location, InternalDistributedMember member,
       String[] groups,
       ServerLoad initialLoad, long loadPollInterval) {
-    serverGroupMap.put(member, groups);
+    serverGroupMap.put(location, groups);
     LoadHolder connectionLoad =
         new LoadHolder(location, initialLoad.getConnectionLoad(),
             initialLoad.getLoadPerConnection(), loadPollInterval);
@@ -113,8 +113,9 @@ public class LocatorLoadSnapshot {
   /**
    * Remove a server from the load snapshot.
    */
-  public synchronized void removeServer(InternalDistributedMember member) {
-    String[] groups = serverGroupMap.remove(member);
+  public synchronized void removeServer(ServerLocation location,
+      InternalDistributedMember member) {
+    String[] groups = serverGroupMap.remove(location);
     /*
      * Adding null check for #41522 - we were getting a remove from a BridgeServer that was shutting
      * down and the ServerLocation wasn't in this map. The root cause isn't 100% clear but it might
@@ -138,7 +139,7 @@ public class LocatorLoadSnapshot {
       ServerLoad newLoad,
       List<ClientProxyMembershipID> clientIds) {
 
-    String[] groups = serverGroupMap.get(member);
+    String[] groups = serverGroupMap.get(location);
     // the server was asynchronously removed, so don't do anything.
     if (groups == null) {
       return;

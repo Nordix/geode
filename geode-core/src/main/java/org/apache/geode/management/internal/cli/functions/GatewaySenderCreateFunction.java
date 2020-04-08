@@ -79,6 +79,11 @@ public class GatewaySenderCreateFunction implements InternalFunction {
       gateway.setParallel(isParallel);
     }
 
+    Boolean isGroupTransactionEvents = gatewaySenderCreateArgs.isGroupTransactionEvents();
+    if (isGroupTransactionEvents != null) {
+      gateway.setGroupTransactionEvents(isGroupTransactionEvents);
+    }
+
     Boolean manualStart = gatewaySenderCreateArgs.isManualStart();
     if (manualStart != null) {
       gateway.setManualStart(manualStart);

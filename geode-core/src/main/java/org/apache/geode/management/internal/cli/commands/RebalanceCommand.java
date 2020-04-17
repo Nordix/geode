@@ -145,7 +145,7 @@ public class RebalanceCommand extends GfshCommand {
 
   private void toCompositeResultData(ResultModel result,
       List<String> rstlist, int index, boolean simulate, InternalCache cache) {
-    final int resultItemCount = 9;
+    final int resultItemCount = 10;
 
     if (rstlist.size() <= resultItemCount || StringUtils.isEmpty(rstlist.get(resultItemCount))) {
       return;
@@ -199,6 +199,12 @@ public class RebalanceCommand extends GfshCommand {
     table1.accumulate("Rebalanced Stats", CliStrings.REBALANCE__MSG__TOTALTIME);
     table1.accumulate("Value", rstlist.get(8));
     resultStr.append(CliStrings.REBALANCE__MSG__TOTALTIME).append(" = ").append(rstlist.get(8))
+        .append(newLine);
+
+    table1.accumulate("Rebalanced Stats", CliStrings.REBALANCE__MSG__MEMBER_COUNT);
+    table1.accumulate("Value", rstlist.get(9));
+    resultStr.append(CliStrings.REBALANCE__MSG__MEMBER_COUNT).append(" = ")
+        .append(rstlist.get(9))
         .append(newLine);
 
     String headerText;

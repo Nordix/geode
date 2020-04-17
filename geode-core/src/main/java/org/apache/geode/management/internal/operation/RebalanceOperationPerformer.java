@@ -100,6 +100,8 @@ public class RebalanceOperationPerformer {
         section.setPrimaryTransfersCompleted(Integer.parseInt(val));
       } else if (key.equals(CliStrings.REBALANCE__MSG__TOTALTIME)) {
         section.setTimeInMilliseconds(Long.parseLong(val));
+      } else if (key.equals(CliStrings.REBALANCE__MSG__MEMBER_COUNT)) {
+        section.setNumOfMembers(Integer.parseInt(val));
       }
     }
     return section;

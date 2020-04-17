@@ -72,4 +72,9 @@ public interface RebalanceRegionResult extends JsonSerializable {
    * Returns the time, in milliseconds, that the rebalance operation took for this region.
    */
   long getTimeInMilliseconds();
+
+  /**
+   * Returns the number of members on which rebalance operation is executed.
+   */
+  int getNumOfMembers();
 }

@@ -27,6 +27,7 @@ public class RebalanceRegionResultImpl implements RebalanceRegionResult {
   private long primaryTransferTimeInMilliseconds;
   private int primaryTransfersCompleted;
   private long timeInMilliseconds;
+  private int numOfMembers;
 
   @Override
   public String getRegionName() {
@@ -114,6 +115,15 @@ public class RebalanceRegionResultImpl implements RebalanceRegionResult {
     return timeInMilliseconds;
   }
 
+  @Override
+  public int getNumOfMembers() {
+    return numOfMembers;
+  }
+
+  public void setNumOfMembers(int numOfMembers) {
+    this.numOfMembers = numOfMembers;
+  }
+
   public void setTimeInMilliseconds(long timeInMilliseconds) {
     this.timeInMilliseconds = timeInMilliseconds;
   }
@@ -129,6 +139,7 @@ public class RebalanceRegionResultImpl implements RebalanceRegionResult {
         ", primaryTransferTimeInMilliseconds=" + primaryTransferTimeInMilliseconds +
         ", primaryTransfersCompleted=" + primaryTransfersCompleted +
         ", timeInMilliseconds=" + timeInMilliseconds +
+        ", numOfMembers=" + numOfMembers +
         ", regionName=" + regionName +
         '}';
   }

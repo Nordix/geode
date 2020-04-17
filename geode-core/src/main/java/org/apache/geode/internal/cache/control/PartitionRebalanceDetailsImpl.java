@@ -148,6 +148,11 @@ public class PartitionRebalanceDetailsImpl
   }
 
   @Override
+  public int getNumberOfMembersExecutedOn() {
+    return getPartitionMemberDetailsAfter().size();
+  }
+
+  @Override
   public int getPrimaryTransfersCompleted() {
     return this.primaryTransfersCompleted;
   }

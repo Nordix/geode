@@ -14,6 +14,7 @@
  */
 package org.apache.geode.internal.cache.wan.parallel;
 
+import static org.apache.geode.cache.wan.GatewaySender.GET_TRANSACTION_EVENTS_FROM_QUEUE_RETRIES;
 import static org.apache.geode.internal.cache.LocalRegion.InitializationLevel.BEFORE_INITIAL_IMAGE;
 
 import java.io.IOException;
@@ -1364,14 +1365,14 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
       return;
     }
 
-    int maxRetries = 2;
     for (Map.Entry<TransactionId, Integer> pendingTransaction : incompleteTransactionIdsInBatch
         .entrySet()) {
       TransactionId transactionId = pendingTransaction.getKey();
       int bucketId = pendingTransaction.getValue();
       boolean presentLastEventInTransaction = false;
       int retries = 0;
-      while (!presentLastEventInTransaction && ++retries <= maxRetries) {
+      while (!presentLastEventInTransaction
+          && retries++ <= GET_TRANSACTION_EVENTS_FROM_QUEUE_RETRIES) {
         List<Object> events = peekEventsWithTransactionId(prQ, bucketId, transactionId);
         for (Object object : events) {
           GatewaySenderEventImpl event = (GatewaySenderEventImpl) object;
@@ -1386,7 +1387,7 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
           }
         }
       }
-      if (retries >= maxRetries) {
+      if (!presentLastEventInTransaction) {
         logger.warn("Not able to retrieve all events for transaction {} after {} retries",
             transactionId, retries);
       }
@@ -1395,7 +1396,6 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
 
   private boolean areAllTransactionsCompleteInBatch(Map incompleteTransactions) {
     return (incompleteTransactions.size() == 0);
-
   }
 
   private long getTimeToSleep(long timeToWait) {
@@ -1448,6 +1448,8 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
         // The peekedEvents queue is > batch size. This means that the previous batch size was
         // reduced due to MessageTooLargeException. Create a batch from the peekedEventsProcessing
         // queue.
+        // This could also be a normal case in which the batch included extra events to make
+        // sure that events for each transaction were sent in the same batch.
         this.peekedEventsProcessing.addAll(this.peekedEvents);
         this.peekedEventsProcessingInProgress = true;
         addPreviouslyPeekedEvents(batch, batchSize);
@@ -1464,11 +1466,23 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
   }
 
   private void addPreviouslyPeekedEvents(List<GatewaySenderEventImpl> batch, int batchSize) {
-    for (int i = 0; i < batchSize; i++) {
-      batch.add(this.peekedEventsProcessing.remove());
+    Set<TransactionId> incompleteTransactionsInBatch = new HashSet<>();
+    for (int i = 0; i < batchSize || incompleteTransactionsInBatch.size() != 0; i++) {
+      GatewaySenderEventImpl event = this.peekedEventsProcessing.remove();
+      batch.add(event);
+      if (event.getTransactionId() != null) {
+        if (event.isLastEventInTransaction()) {
+          incompleteTransactionsInBatch.remove(event.getTransactionId());
+        } else {
+          incompleteTransactionsInBatch.add(event.getTransactionId());
+        }
+      }
       if (this.peekedEventsProcessing.isEmpty()) {
         this.resetLastPeeked = false;
         this.peekedEventsProcessingInProgress = false;
+        if (incompleteTransactionsInBatch.size() != 0) {
+          logger.error("A batch with incomplete transactions has been sent.");
+        }
         break;
       }
     }

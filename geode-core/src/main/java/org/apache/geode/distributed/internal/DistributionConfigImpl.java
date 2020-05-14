@@ -611,6 +611,8 @@ public class DistributionConfigImpl extends AbstractDistributionConfig implement
   private String[] securityAuthTokenEnabledComponents =
       DEFAULT_SECURITY_AUTH_TOKEN_ENABLED_COMPONENTS;
 
+  private boolean securityCommonNameAuthEnabled = DEFAULT_SECURITY_COMMON_NAME_AUTH_ENABLED;
+
   private boolean sslUseDefaultSSLContext = DEFAULT_SSL_USE_DEFAULT_CONTEXT;
   private String sslProtocols = DEFAULT_SSL_PROTOCOLS;
   private String sslCiphers = DEFAULT_SSL_CIPHERS;
@@ -879,6 +881,7 @@ public class DistributionConfigImpl extends AbstractDistributionConfig implement
 
     enableManagementRestService = other.getEnableManagementRestService();
     securityAuthTokenEnabledComponents = other.getSecurityAuthTokenEnabledComponents();
+    securityCommonNameAuthEnabled = other.getSecurityCommonNameAuthEnabled();
   }
 
   /**
@@ -2368,6 +2371,16 @@ public class DistributionConfigImpl extends AbstractDistributionConfig implement
   @Override
   public void setDurableClientTimeout(int durableClientTimeout) {
     this.durableClientTimeout = durableClientTimeout;
+  }
+
+  @Override
+  public boolean getSecurityCommonNameAuthEnabled() {
+    return this.securityCommonNameAuthEnabled;
+  }
+
+  @Override
+  public void setSecurityCommonNameAuthEnabled(boolean isCommonNameAuthEnabled) {
+      this.securityCommonNameAuthEnabled = isCommonNameAuthEnabled;
   }
 
   @Override

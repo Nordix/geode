@@ -109,13 +109,16 @@ public abstract class AbstractOp implements Op {
    * @see ServerConnection#updateAndGetSecurityPart()
    */
   protected void sendMessage(Connection cnx) throws Exception {
-    if (cnx.getServer().getRequiresCredentials()) {
+    logger.info("jale server not requires");
+    //if (cnx.getServer().getRequiresCredentials()) {
       // Security is enabled on client as well as on server
       getMessage().setMessageHasSecurePartFlag();
+      logger.info("jale server requires");
       long userId;
 
       if (UserAttributes.userAttributes.get() == null) { // single user mode
         userId = cnx.getServer().getUserId();
+        logger.info("Jale server userID" + userId);
       } else { // multi user mode
         Long id = UserAttributes.userAttributes.get().getServerToId().get(cnx.getServer());
         if (id == null) {
@@ -130,7 +133,7 @@ public abstract class AbstractOp implements Op {
         hdos.writeLong(userId);
         getMessage().setSecurePart(((ConnectionImpl) cnx).encryptBytes(hdos.toByteArray()));
       }
-    }
+  //  }
     getMessage().send(false);
   }
 
@@ -141,7 +144,7 @@ public abstract class AbstractOp implements Op {
    * @see ServerConnection#updateAndGetSecurityPart()
    */
   protected void processSecureBytes(Connection cnx, Message message) throws Exception {
-    if (cnx.getServer().getRequiresCredentials()) {
+    //if (cnx.getServer().getRequiresCredentials()) {
       if (!message.isSecureMode()) {
         // This can be seen during shutdown
         if (logger.isTraceEnabled(LogMarker.BRIDGE_SERVER_VERBOSE)) {
@@ -160,7 +163,8 @@ public abstract class AbstractOp implements Op {
       byte[] bytes = ((ConnectionImpl) cnx).decryptBytes(partBytes);
       ByteArrayDataInput dis = new ByteArrayDataInput(bytes);
       cnx.setConnectionID(dis.readLong());
-    }
+      logger.info("Jale connection id " + cnx.getConnectionID());
+  //  }
   }
 
   /**

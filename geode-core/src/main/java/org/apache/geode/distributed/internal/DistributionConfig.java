@@ -147,6 +147,7 @@ import static org.apache.geode.distributed.ConfigurationProperties.SERVER_SSL_TR
 import static org.apache.geode.distributed.ConfigurationProperties.SERVER_SSL_TRUSTSTORE_PASSWORD;
 import static org.apache.geode.distributed.ConfigurationProperties.SOCKET_BUFFER_SIZE;
 import static org.apache.geode.distributed.ConfigurationProperties.SOCKET_LEASE_TIME;
+import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_COMMON_NAME_AUTH_ENABLED;
 import static org.apache.geode.distributed.ConfigurationProperties.SSL_CIPHERS;
 import static org.apache.geode.distributed.ConfigurationProperties.SSL_CLUSTER_ALIAS;
 import static org.apache.geode.distributed.ConfigurationProperties.SSL_DEFAULT_ALIAS;
@@ -4827,6 +4828,32 @@ public interface DistributionConfig extends Config, LogConfig, StatisticsConfig 
   @ConfigAttributeGetter(name = SECURITY_SHIRO_INIT)
   String getShiroInit();
 
+  /**
+   * Returns the value of the {@link ConfigurationProperties#SECURITY_COMMON_NAME_AUTH_ENABLED} property.
+   *
+   * @since Geode 1.14
+   */
+  @ConfigAttributeGetter(name = SECURITY_COMMON_NAME_AUTH_ENABLED)
+  boolean getSecurityCommonNameAuthEnabled();
+
+  /**
+   * Sets the value of the {@link ConfigurationProperties#SECURITY_COMMON_NAME_AUTH_ENABLED} property.
+   *
+   * @since Geode 1.14
+   */
+  @ConfigAttributeSetter(name = SECURITY_COMMON_NAME_AUTH_ENABLED)
+  void setSecurityCommonNameAuthEnabled(boolean isCommonNameAuthEnabled);
+
+  /**
+   * The name of the {@link ConfigurationProperties#DISABLE_TCP} property
+   */
+  @ConfigAttribute(type = Boolean.class)
+  String SECURITY_COMMON_NAME_AUTH_ENABLED_NAME = SECURITY_COMMON_NAME_AUTH_ENABLED;
+
+  /**
+   * The default value of the {@link ConfigurationProperties#SECURITY_COMMON_NAME_AUTH_ENABLED} property
+   */
+  boolean DEFAULT_SECURITY_COMMON_NAME_AUTH_ENABLED = false;
 
   /**
    * Returns the value of the {@link ConfigurationProperties#SSL_CLUSTER_ALIAS} property.

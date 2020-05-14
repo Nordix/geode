@@ -16,13 +16,22 @@ package org.apache.geode.internal.cache.tier.sockets;
 
 import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_CLIENT_AUTHENTICATOR;
 import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_CLIENT_AUTH_INIT;
+import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_COMMON_NAME_AUTH_ENABLED;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.net.Socket;
+import java.security.Principal;
 import java.util.Properties;
 
+import javax.naming.InvalidNameException;
+import javax.naming.ldap.LdapName;
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSocket;
+
+import com.fasterxml.jackson.databind.annotation.JsonAppend;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 
@@ -43,6 +52,7 @@ import org.apache.geode.internal.security.Credentials;
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.internal.serialization.Version;
 import org.apache.geode.logging.internal.log4j.api.LogService;
+import org.apache.geode.management.internal.security.ResourceConstants;
 import org.apache.geode.security.AuthInitialize;
 import org.apache.geode.security.AuthenticationFailedException;
 import org.apache.geode.security.AuthenticationRequiredException;
@@ -290,7 +300,10 @@ public abstract class Handshake {
     boolean requireAuthentication = securityService.isClientSecurityRequired();
     try {
       byte secureMode = dis.readByte();
-      throwIfMissingRequiredCredentials(requireAuthentication, secureMode != CREDENTIALS_NONE);
+      String valueCommonNameAuthEnabled = system.getProperties().getProperty(SECURITY_COMMON_NAME_AUTH_ENABLED);
+      if (!Boolean.parseBoolean(valueCommonNameAuthEnabled)) {
+        throwIfMissingRequiredCredentials(requireAuthentication, secureMode != CREDENTIALS_NONE);
+      }
       if (secureMode == CREDENTIALS_NORMAL) {
         encryptor.setAppSecureMode(CREDENTIALS_NORMAL);
       } else if (secureMode == CREDENTIALS_DHENCRYPT) {
@@ -468,6 +481,23 @@ public abstract class Handshake {
   }
 
   /**
+   * this static method is used to retrieve Common Name (CN) from client certificate received
+   * during handshake on given socket.
+   */
+  public static Properties readCommonNameProperty(final Socket socket)
+      throws InvalidNameException, SSLPeerUnverifiedException {
+    Properties properties = new Properties();
+    SSLSocket sslSocket = (SSLSocket) socket;
+    Principal principal = sslSocket.getSession().getPeerPrincipal();
+    LdapName dn = new LdapName(principal.getName());
+    String commonName = dn.getRdns().stream().
+        filter( rd -> rd.getType().equalsIgnoreCase("CN")).
+        findFirst().get().getValue().toString();
+    properties.setProperty(ResourceConstants.COMMON_NAME, commonName);
+    return properties;
+  }
+
+  /**
    * this could return either a Subject or a Principal depending on if it's integrated security or
    * not
    */
@@ -483,6 +513,7 @@ public abstract class Handshake {
 
     Authenticator auth = null;
     try {
+
       if (securityService.isIntegratedSecurity()) {
         return securityService.login(credentials);
       } else {

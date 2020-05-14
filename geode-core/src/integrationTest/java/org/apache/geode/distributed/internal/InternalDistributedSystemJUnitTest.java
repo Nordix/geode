@@ -31,6 +31,7 @@ import static org.apache.geode.distributed.ConfigurationProperties.MEMBERSHIP_PO
 import static org.apache.geode.distributed.ConfigurationProperties.MEMBER_TIMEOUT;
 import static org.apache.geode.distributed.ConfigurationProperties.NAME;
 import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_AUTH_TOKEN_ENABLED_COMPONENTS;
+import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_COMMON_NAME_AUTH_ENABLED;
 import static org.apache.geode.distributed.ConfigurationProperties.SERVER_SSL_ENABLED;
 import static org.apache.geode.distributed.ConfigurationProperties.SSL_ENABLED_COMPONENTS;
 import static org.apache.geode.distributed.ConfigurationProperties.START_LOCATOR;
@@ -709,6 +710,18 @@ public class InternalDistributedSystemJUnitTest {
   public void testSecurityAuthTokenProp() throws Exception {
     Properties props = getCommonProperties();
     props.setProperty(SECURITY_AUTH_TOKEN_ENABLED_COMPONENTS, "management");
+    DistributionConfig config1 = new DistributionConfigImpl(props, false);
+    assertThat(config1.getSecurityAuthTokenEnabledComponents()).containsExactly("MANAGEMENT");
+    Properties securityProps = config1.getSecurityProps();
+    assertThat(securityProps.getProperty(SECURITY_AUTH_TOKEN_ENABLED_COMPONENTS))
+        .isEqualTo("management");
+    assertThat(config1.getSecurityAuthTokenEnabledComponents()).containsExactly("MANAGEMENT");
+  }
+
+  @Test
+  public void testSecurityCommonNameAuth() throws Exception {
+    Properties props = getCommonProperties();
+    props.setProperty(SECURITY_COMMON_NAME_AUTH_ENABLED, "true");
     DistributionConfig config1 = new DistributionConfigImpl(props, false);
     assertThat(config1.getSecurityAuthTokenEnabledComponents()).containsExactly("MANAGEMENT");
     Properties securityProps = config1.getSecurityProps();

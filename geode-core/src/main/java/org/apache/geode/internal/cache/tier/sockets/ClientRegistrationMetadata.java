@@ -15,6 +15,8 @@
 
 package org.apache.geode.internal.cache.tier.sockets;
 
+import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_COMMON_NAME_AUTH_ENABLED;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -22,9 +24,13 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.util.Properties;
 
+import javax.naming.InvalidNameException;
+import javax.security.sasl.AuthenticationException;
+
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.cache.UnsupportedVersionException;
+import org.apache.geode.distributed.DistributedSystem;
 import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.cache.tier.CommunicationMode;
 import org.apache.geode.internal.serialization.UnsupportedSerializationVersionException;
@@ -32,6 +38,7 @@ import org.apache.geode.internal.serialization.Version;
 import org.apache.geode.internal.serialization.VersionedDataInputStream;
 import org.apache.geode.internal.serialization.VersionedDataOutputStream;
 import org.apache.geode.logging.internal.log4j.api.LogService;
+import org.apache.geode.security.AuthenticationRequiredException;
 
 class ClientRegistrationMetadata {
   private static final Logger logger = LogService.getLogger();
@@ -80,6 +87,20 @@ class ClientRegistrationMetadata {
       getAndValidateClientProxyMembershipID();
 
       if (getAndValidateClientConflation()) {
+        DistributedSystem system = cache.getDistributedSystem();
+        String valueCommonNameAuthEnabled = system.getProperties().getProperty(SECURITY_COMMON_NAME_AUTH_ENABLED);
+        if (Boolean.parseBoolean(valueCommonNameAuthEnabled)) {
+          try {
+            logger.info("Jale try");
+            clientCredentials = Handshake.readCommonNameProperty(socket);
+            return true;
+          } catch (InvalidNameException exception) {
+            throw new AuthenticationRequiredException(
+                "Jale No security credentials are provided");
+            // to handle
+          }
+        }
+
         clientCredentials =
             Handshake.readCredentials(dataInputStream, dataOutputStream,
                 cache.getDistributedSystem(), cache.getSecurityService());

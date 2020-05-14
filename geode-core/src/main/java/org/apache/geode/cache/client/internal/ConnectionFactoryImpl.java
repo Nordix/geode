@@ -147,7 +147,7 @@ public class ConnectionFactoryImpl implements ConnectionFactory {
     cancelCriterion.checkCancelInProgress(null);
     if (!pool.isUsedByGateway() && !pool.getMultiuserAuthentication()) {
       ServerLocation server = conn.getServer();
-      if (server.getRequiresCredentials()) {
+    //  if (server.getRequiresCredentials()) {
         if (server.getUserId() == -1) {
           Long uniqueID = (Long) AuthenticateUserOp.executeOn(conn, pool);
           server.setUserId(uniqueID);
@@ -155,7 +155,7 @@ public class ConnectionFactoryImpl implements ConnectionFactory {
             logger.debug("CFI.authenticateIfRequired() Completed authentication on {}", conn);
           }
         }
-      }
+   //   }
     }
   }
 

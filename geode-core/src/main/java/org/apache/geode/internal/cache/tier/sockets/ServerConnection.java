@@ -17,6 +17,7 @@ package org.apache.geode.internal.cache.tier.sockets;
 import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_CLIENT_ACCESSOR;
 import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_CLIENT_ACCESSOR_PP;
 import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_CLIENT_AUTHENTICATOR;
+import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_COMMON_NAME_AUTH_ENABLED;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -31,12 +32,17 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.security.Principal;
+import java.security.cert.X509Certificate;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
+
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocket;
+import javax.security.auth.x500.X500Principal;
 
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.logging.log4j.Logger;
@@ -828,7 +834,9 @@ public abstract class ServerConnection implements Runnable {
         if (securityService.isIntegratedSecurity()
             && !isInternalMessage(requestMessage, allowInternalMessagesWithoutCredentials)
             && !communicationMode.isWAN()) {
+
           long uniqueId = getUniqueId();
+          logger.info("Jale unique id " + uniqueId);
           String messageType = MessageType.getString(requestMessage.getMessageType());
           Subject subject = clientUserAuths.getSubject(uniqueId);
           if (subject != null) {
@@ -1073,11 +1081,16 @@ public abstract class ServerConnection implements Runnable {
       ByteArrayDataInput dinp = new ByteArrayDataInput(credBytes);
       Properties credentials = DataSerializer.readProperties(dinp);
 
+      DistributedSystem system = getDistributedSystem();
+      String valueCommonNameAuthEnabled = system.getProperties().getProperty(SECURITY_COMMON_NAME_AUTH_ENABLED);
+      if (Boolean.parseBoolean(valueCommonNameAuthEnabled)) {
+        credentials = Handshake.readCommonNameProperty(theSocket);
+      }
+
       // When here, security is enforced on server, if login returns a subject, then it's the newly
       // integrated security, otherwise, do it the old way.
       long uniqueId;
 
-      DistributedSystem system = getDistributedSystem();
       String methodName = system.getProperties().getProperty(SECURITY_CLIENT_AUTHENTICATOR);
 
       Object principal = Handshake.verifyCredentials(methodName, credentials,
@@ -1771,7 +1784,6 @@ public abstract class ServerConnection implements Runnable {
   private void setAuthAttributes()
       throws AuthenticationRequiredException, AuthenticationFailedException, ClassNotFoundException,
       NoSuchMethodException, InvocationTargetException, IOException, IllegalAccessException {
-    logger.debug("setAttributes()");
     Object principal = getHandshake().verifyCredentials();
 
     long uniqueId;

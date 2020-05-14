@@ -161,11 +161,11 @@ public class AuthenticateUserOp {
 
     @Override
     public Object attempt(Connection cnx) throws Exception {
-      if (cnx.getServer().getRequiresCredentials()) {
+  //    if (cnx.getServer().getRequiresCredentials()) {
         return super.attempt(cnx);
-      } else {
-        return null;
-      }
+   //   } else {
+   //     return null;
+   //   }
     }
 
     @Override

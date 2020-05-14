@@ -687,9 +687,9 @@ public class OpExecutorImpl implements ExecutablePool {
   }
 
   private void authenticateIfRequired(Connection conn, Op op) {
-    if (!conn.getServer().getRequiresCredentials()) {
-      return;
-    }
+ //   if (!conn.getServer().getRequiresCredentials()) {
+ //     return;
+ //   }
 
     if (pool == null) {
       PoolImpl poolImpl =

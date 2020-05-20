@@ -704,7 +704,7 @@ public class GatewaySenderEventImpl
   @Override
   public void toData(DataOutput out,
       SerializationContext context) throws IOException {
-    toDataPre_GEODE_1_12_0_0(out, context);
+    toDataPre_ERICSSONGEODE_1_12_0_1(out, context);
     boolean hasTransaction = this.transactionId != null;
     DataSerializer.writeBoolean(hasTransaction, out);
     if (hasTransaction) {
@@ -713,7 +713,7 @@ public class GatewaySenderEventImpl
     }
   }
 
-  public void toDataPre_GEODE_1_12_0_0(DataOutput out,
+  public void toDataPre_ERICSSONGEODE_1_12_0_1(DataOutput out,
       SerializationContext context) throws IOException {
     toDataPre_GEODE_1_9_0_0(out, context);
     DataSerializer.writeBoolean(this.isConcurrencyConflict, out);
@@ -748,8 +748,8 @@ public class GatewaySenderEventImpl
   @Override
   public void fromData(DataInput in,
       DeserializationContext context) throws IOException, ClassNotFoundException {
-    fromDataPre_GEODE_1_12_0_0(in, context);
-    if (version >= Version.GEODE_1_12_0.ordinal()) {
+    fromDataPre_ERICSSONGEODE_1_12_0_1(in, context);
+    if (version >= Version.ERICSSONGEODE_1_12_0_1.ordinal()) {
       boolean hasTransaction = DataSerializer.readBoolean(in);
       if (hasTransaction) {
         this.isLastEventInTransaction = DataSerializer.readBoolean(in);
@@ -758,7 +758,7 @@ public class GatewaySenderEventImpl
     }
   }
 
-  public void fromDataPre_GEODE_1_12_0_0(DataInput in, DeserializationContext context)
+  public void fromDataPre_ERICSSONGEODE_1_12_0_1(DataInput in, DeserializationContext context)
       throws IOException, ClassNotFoundException {
     fromDataPre_GEODE_1_9_0_0(in, context);
     if (version >= Version.GEODE_1_9_0.ordinal()) {

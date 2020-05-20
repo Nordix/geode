@@ -74,7 +74,7 @@ class ServerSideHandshakeFactory {
       try {
         clientVersion = Version.fromOrdinal(clientVersionOrdinal);
         if (CommandInitializer.getCommands(clientVersion) == null) {
-          throw new UnsupportedVersionException("Client version {} is not supported");
+          throw new UnsupportedVersionException("Client version " + clientVersion + " is not supported");
         }
       } catch (UnsupportedSerializationVersionException uve) {
         // Allows higher version of wan site to connect to server

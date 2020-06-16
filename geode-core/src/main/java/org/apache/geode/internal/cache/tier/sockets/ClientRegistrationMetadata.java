@@ -18,8 +18,11 @@ package org.apache.geode.internal.cache.tier.sockets;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.logging.log4j.Logger;
@@ -31,6 +34,9 @@ import org.apache.geode.internal.serialization.UnsupportedSerializationVersionEx
 import org.apache.geode.internal.serialization.Version;
 import org.apache.geode.internal.serialization.VersionedDataInputStream;
 import org.apache.geode.internal.serialization.VersionedDataOutputStream;
+import org.apache.geode.internal.net.NioSslEngine;
+import org.apache.geode.internal.tcp.ByteBufferInputStream;
+
 import org.apache.geode.logging.internal.log4j.api.LogService;
 
 class ClientRegistrationMetadata {
@@ -44,15 +50,31 @@ class ClientRegistrationMetadata {
   private Version clientVersion;
   private DataInputStream dataInputStream;
   private DataOutputStream dataOutputStream;
+  private final NioSslEngine sslEngine;
 
-  ClientRegistrationMetadata(final InternalCache cache, final Socket socket) {
+  ClientRegistrationMetadata(final InternalCache cache, final Socket socket,
+      final NioSslEngine engine) {
     this.cache = cache;
     this.socket = socket;
     this.socketMessageWriter = new SocketMessageWriter();
+    this.sslEngine = engine;
+  }
+
+  public NioSslEngine getSslEngine() {
+    return this.sslEngine;
   }
 
   boolean initialize() throws IOException {
-    DataInputStream unversionedDataInputStream = new DataInputStream(socket.getInputStream());
+    InputStream inputStream;
+    if (sslEngine == null) {
+      inputStream = socket.getInputStream();
+    } else {
+      ByteBuffer unwrapbuff = sslEngine.getUnwrappedBuffer(null);
+      inputStream = new ByteBufferInputStream(unwrapbuff);
+    }
+    DataInputStream unversionedDataInputStream = new DataInputStream(inputStream);
+
+
     DataOutputStream unversionedDataOutputStream = new DataOutputStream(socket.getOutputStream());
 
     if (getAndValidateClientVersion(socket, unversionedDataInputStream,

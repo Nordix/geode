@@ -17,14 +17,18 @@ package org.apache.geode.internal.cache.tier.sockets;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.apache.geode.DataSerializer;
 import org.apache.geode.Instantiator;
+import org.apache.geode.internal.ByteBufferOutputStream;
 import org.apache.geode.internal.InternalDataSerializer;
 import org.apache.geode.internal.InternalInstantiator;
 import org.apache.geode.internal.serialization.Version;
+import org.apache.geode.internal.net.NioSslEngine;
 import org.apache.geode.util.internal.GeodeGlossary;
 
 public class SocketMessageWriter {
@@ -32,8 +36,17 @@ public class SocketMessageWriter {
       Integer.getInteger(GeodeGlossary.GEMFIRE_PREFIX + "serverToClientPingPeriod", 60000);
 
   public void writeHandshakeMessage(DataOutputStream dos, byte type, String p_msg,
-      Version clientVersion, byte endpointType, int queueSize) throws IOException {
+      Version clientVersion, byte endpointType, int queueSize, NioSslEngine engine,
+      Socket socket)
+      throws IOException {
+
     String msg = p_msg;
+    ByteBufferOutputStream bbos = null;
+
+    if (engine != null) {
+      bbos = new ByteBufferOutputStream(engine.getEngine().getSession().getPacketBufferSize());
+      dos = new DataOutputStream(bbos);
+    }
 
     // write the message type
     dos.writeByte(type);
@@ -86,6 +99,13 @@ public class SocketMessageWriter {
       }
     }
     dos.flush();
+
+    if (engine != null) {
+      bbos.flush();
+      ByteBuffer buffer = bbos.getContentBuffer();
+      ByteBuffer wrappedBuffer = engine.wrap(buffer);
+      socket.getChannel().write(wrappedBuffer);
+    }
   }
 
   /**
@@ -97,6 +117,6 @@ public class SocketMessageWriter {
    */
   public void writeException(DataOutputStream dos, byte type, Exception ex, Version clientVersion)
       throws IOException {
-    writeHandshakeMessage(dos, type, ex.toString(), clientVersion, (byte) 0x00, 0);
+    writeHandshakeMessage(dos, type, ex.toString(), clientVersion, (byte) 0x00, 0, null, null);
   }
 }

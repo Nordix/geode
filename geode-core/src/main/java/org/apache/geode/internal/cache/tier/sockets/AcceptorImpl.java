@@ -56,6 +56,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
+import javax.net.ssl.SSLEngine;
+
 import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.logging.log4j.Logger;
 
@@ -71,10 +73,12 @@ import org.apache.geode.cache.server.CacheServer;
 import org.apache.geode.cache.wan.GatewayTransportFilter;
 import org.apache.geode.distributed.DistributedMember;
 import org.apache.geode.distributed.internal.DistributionConfig;
+import org.apache.geode.distributed.internal.DistributionImpl;
 import org.apache.geode.distributed.internal.DistributionManager;
 import org.apache.geode.distributed.internal.InternalDistributedSystem;
 import org.apache.geode.distributed.internal.LonerDistributionManager;
 import org.apache.geode.distributed.internal.ReplyProcessor21;
+import org.apache.geode.internal.ByteBufferOutputStream;
 import org.apache.geode.internal.HeapDataOutputStream;
 import org.apache.geode.internal.SystemTimer;
 import org.apache.geode.internal.cache.BucketAdvisor;
@@ -92,6 +96,10 @@ import org.apache.geode.internal.cache.wan.GatewayReceiverStats;
 import org.apache.geode.internal.inet.LocalHostUtil;
 import org.apache.geode.internal.logging.CoreLoggingExecutors;
 import org.apache.geode.internal.monitoring.ThreadsMonitoring;
+
+import org.apache.geode.internal.net.BufferPool;
+import org.apache.geode.internal.net.NioSslEngine;
+import org.apache.geode.internal.net.SocketCloser;
 import org.apache.geode.internal.net.SocketCreator;
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.internal.serialization.Version;
@@ -347,6 +355,12 @@ public class AcceptorImpl implements Acceptor, Runnable {
 
   private final ServerConnectionFactory serverConnectionFactory;
 
+  private final SocketCloser socketCloser = new SocketCloser();
+
+  private final BufferPool bufferPool;
+
+  private final Map nioSSLEngineMap = new HashMap();
+
   /**
    * Constructs an AcceptorImpl for use within a CacheServer.
    *
@@ -494,18 +508,25 @@ public class AcceptorImpl implements Acceptor, Runnable {
       LinkedBlockingQueue<ByteBuffer> tmp_commQ = null;
       Set<ServerConnection> tmp_hs = null;
       SystemTimer tmp_timer = null;
+      BufferPool tmp_buffpool = null;
       if (isSelector()) {
         tmp_s = Selector.open(); // no longer catch ex to fix bug 36907
         tmp_q = new LinkedBlockingQueue<>();
         tmp_commQ = new LinkedBlockingQueue<>();
         tmp_hs = new HashSet<>(512);
         tmp_timer = new SystemTimer(internalCache.getDistributedSystem());
+        DistributionImpl distribution = (DistributionImpl) internalCache
+            .getInternalDistributedSystem().getDM().getDistribution();
+        if (distribution != null) {
+          tmp_buffpool = distribution.getDirectChannel().getConduit().getBufferPool();
+        }
       }
       selector = tmp_s;
       selectorQueue = tmp_q;
       commBufferQueue = tmp_commQ;
       selectorRegistrations = tmp_hs;
       hsTimer = tmp_timer;
+      bufferPool = tmp_buffpool;
       this.tcpNoDelay = tcpNoDelay;
     }
 
@@ -522,10 +543,14 @@ public class AcceptorImpl implements Acceptor, Runnable {
       final long tilt = System.currentTimeMillis() + timeLimitMillis;
 
       if (isSelector()) {
-        if (socketCreator.forCluster().useSSL()) {
-          throw new IllegalArgumentException(
-              "Selector thread pooling can not be used with client/server SSL. The selector can be disabled by setting max-threads=0.");
-        }
+        /*
+         * if (socketCreator.forCluster().useSSL()) {
+         * throw new IllegalArgumentException(
+         * "Selector thread pooling can not be used with client/server SSL. The selector can be disabled by setting max-threads=0."
+         * );
+         * }
+         */
+
         ServerSocketChannel channel = ServerSocketChannel.open();
         serverSock = channel.socket();
         serverSock.setReuseAddress(true);
@@ -1108,7 +1133,7 @@ public class AcceptorImpl implements Acceptor, Runnable {
             keysIterator.remove();
             final ServerConnection sc = (ServerConnection) key.attachment();
             try {
-              if (key.isValid() && key.isReadable()) {
+              if (key.isValid() && (key.isReadable() || key.isWritable())) {
                 // this is the only event we currently register for
                 try {
                   key.cancel();
@@ -1440,7 +1465,10 @@ public class AcceptorImpl implements Acceptor, Runnable {
 
     // GEODE-3637 - If the communicationMode is client Subscriptions, hand-off the client queue
     // initialization to be done in another threadPool
-    if (handOffQueueInitialization(socket, communicationMode)) {
+
+    NioSslEngine tempEngine = (NioSslEngine) nioSSLEngineMap.remove(socket.getChannel());
+
+    if (handOffQueueInitialization(socket, communicationMode, tempEngine)) {
       return;
     }
 
@@ -1459,7 +1487,7 @@ public class AcceptorImpl implements Acceptor, Runnable {
             refuseHandshake(socket.getOutputStream(),
                 String.format("exceeded max-connections %s",
                     maxConnections),
-                REPLY_REFUSED);
+                REPLY_REFUSED, tempEngine, socket);
           } catch (Exception ex) {
             logger.debug("rejection message failed", ex);
           }
@@ -1473,6 +1501,10 @@ public class AcceptorImpl implements Acceptor, Runnable {
         serverConnectionFactory.makeServerConnection(socket, cache, crHelper, stats,
             handshakeTimeout, socketBufferSize, communicationMode.toString(),
             communicationMode.getModeNumber(), this, securityService);
+
+    if (tempEngine != null) {
+      serverConn.setSSLEngine(tempEngine);
+    }
 
     synchronized (allSCsLock) {
       allSCs.add(serverConn);
@@ -1498,7 +1530,7 @@ public class AcceptorImpl implements Acceptor, Runnable {
           refuseHandshake(socket.getOutputStream(),
               String.format("exceeded max-connections %s",
                   maxConnections),
-              REPLY_REFUSED);
+              REPLY_REFUSED, tempEngine, socket);
 
         } catch (Exception ex) {
           logger.debug("rejection message failed", ex);
@@ -1510,8 +1542,24 @@ public class AcceptorImpl implements Acceptor, Runnable {
 
   @Override
   public void refuseHandshake(OutputStream out, String message, byte exception) throws IOException {
-    HeapDataOutputStream hdos = new HeapDataOutputStream(32, Version.CURRENT);
-    DataOutputStream dos = new DataOutputStream(hdos);
+    refuseHandshake(out, message, exception, null, null);
+  }
+
+
+  @Override
+  public void refuseHandshake(OutputStream out, String message, byte exception, NioSslEngine engine,
+      Socket socket) throws IOException {
+    DataOutputStream dos;
+    ByteBufferOutputStream bbos = null;
+    HeapDataOutputStream hdos = null;
+    if (engine == null) {
+      hdos = new HeapDataOutputStream(32, Version.CURRENT);
+      dos = new DataOutputStream(hdos);
+    } else {
+      bbos = new ByteBufferOutputStream(engine.getEngine().getSession().getPacketBufferSize());
+      dos = new DataOutputStream(bbos);
+    }
+
     // Write refused reply
     dos.writeByte(exception);
 
@@ -1522,6 +1570,7 @@ public class AcceptorImpl implements Acceptor, Runnable {
 
     // Write the server's member
     DistributedMember member = InternalDistributedSystem.getAnyInstance().getDistributedMember();
+
     HeapDataOutputStream memberDos = new HeapDataOutputStream(Version.CURRENT);
     DataSerializer.writeObject(member, memberDos);
     DataSerializer.writeByteArray(memberDos.toByteArray(), dos);
@@ -1538,16 +1587,24 @@ public class AcceptorImpl implements Acceptor, Runnable {
     // throw an exception before the below byte could be read.
     dos.writeBoolean(Boolean.TRUE);
 
-    out.write(hdos.toByteArray());
-    out.flush();
+    if (engine == null) {
+      out.write(hdos.toByteArray());
+      out.flush();
+    } else {
+      bbos.flush();
+      ByteBuffer buffer = bbos.getContentBuffer();
+      ByteBuffer wrappedBuffer = engine.wrap(buffer);
+      socket.getChannel().write(wrappedBuffer);
+    }
   }
 
-  private boolean handOffQueueInitialization(Socket socket, CommunicationMode communicationMode) {
+  private boolean handOffQueueInitialization(Socket socket, CommunicationMode communicationMode,
+      NioSslEngine engine) {
     if (communicationMode.isSubscriptionFeed()) {
       boolean isPrimaryServerToClient =
           communicationMode == CommunicationMode.PrimaryServerToClient;
       clientQueueInitPool
-          .execute(new ClientQueueInitializerTask(socket, isPrimaryServerToClient, this));
+          .execute(new ClientQueueInitializerTask(socket, isPrimaryServerToClient, this, engine));
       return true;
     }
     return false;
@@ -1564,9 +1621,35 @@ public class AcceptorImpl implements Acceptor, Runnable {
   }
 
   private CommunicationMode getCommunicationModeForSelector(Socket socket) throws IOException {
-    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(1);
     final SocketChannel socketChannel = socket.getChannel();
     socketChannel.configureBlocking(false);
+
+    /// added impacts
+    if (socketCreator.forCluster().useSSL()) {
+      NioSslEngine sslengine = createNIOSSLEngine(socketChannel);
+      nioSSLEngineMap.put(socketChannel, sslengine);
+
+      ByteBuffer inbuffer = sslengine.getHandshakeBuffer();
+
+      if (inbuffer.position() == 0) {
+        int res = socketChannel.read(inbuffer);
+        if (res < 0) {
+          throw new EOFException();
+        }
+      }
+      inbuffer.flip();
+      ByteBuffer unwrapbuff = sslengine.unwrap(inbuffer);
+
+      bufferPool.releaseReceiveBuffer(inbuffer);
+      unwrapbuff.flip();
+      byte modeNumber = unwrapbuff.get();
+      socketChannel.configureBlocking(true);
+
+      return CommunicationMode.fromModeNumber(modeNumber);
+    }
+
+    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(1);
+
     // try to read the byte first in non-blocking mode
     int res = socketChannel.read(byteBuffer);
     socketChannel.configureBlocking(true);
@@ -1862,16 +1945,49 @@ public class AcceptorImpl implements Acceptor, Runnable {
     releaseCommBuffer(Message.setTLCommBuffer(null));
   }
 
+  @Override
+  public int getMaximumTimeBetweenPings() {
+    return maximumTimeBetweenPings;
+  }
+
+  @Override
+  public SocketCloser getSocketCloser() {
+    return socketCloser;
+  }
+
+  private NioSslEngine createNIOSSLEngine(SocketChannel channel) throws IOException {
+    InetSocketAddress address = (InetSocketAddress) channel.getRemoteAddress();
+    SSLEngine engine =
+        socketCreator.createSSLEngine(address.getHostString(), address.getPort());
+
+    int packetBufferSize = engine.getSession().getPacketBufferSize();
+    ByteBuffer inbuffer = bufferPool.acquireNonDirectReceiveBuffer(packetBufferSize);
+
+    if (channel.socket().getReceiveBufferSize() < packetBufferSize) {
+      channel.socket().setReceiveBufferSize(packetBufferSize);
+    }
+    if (channel.socket().getSendBufferSize() < packetBufferSize) {
+      channel.socket().setSendBufferSize(packetBufferSize);
+    }
+    NioSslEngine nioSslEngine =
+        socketCreator.handshakeSSLSocketChannel(channel, engine, acceptTimeout, false, inbuffer,
+            bufferPool);
+
+    return nioSslEngine;
+  }
+
   private static class ClientQueueInitializerTask implements Runnable {
     private final Socket socket;
     private final boolean isPrimaryServerToClient;
     private final AcceptorImpl acceptor;
+    private final NioSslEngine sslEngine;
 
     ClientQueueInitializerTask(Socket socket, boolean isPrimaryServerToClient,
-        AcceptorImpl acceptor) {
+        AcceptorImpl acceptor, NioSslEngine engine) {
       this.socket = socket;
       this.acceptor = acceptor;
       this.isPrimaryServerToClient = isPrimaryServerToClient;
+      this.sslEngine = engine;
     }
 
     @Override
@@ -1880,7 +1996,7 @@ public class AcceptorImpl implements Acceptor, Runnable {
           isPrimaryServerToClient ? "primary" : "secondary", socket);
       try {
         ClientRegistrationMetadata clientRegistrationMetadata =
-            new ClientRegistrationMetadata(acceptor.cache, socket);
+            new ClientRegistrationMetadata(acceptor.cache, socket, sslEngine);
 
         if (clientRegistrationMetadata.initialize()) {
           acceptor.getCacheClientNotifier().registerClient(clientRegistrationMetadata, socket,

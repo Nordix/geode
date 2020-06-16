@@ -74,6 +74,8 @@ public class NioSslEngine implements NioFilter {
    */
   ByteBuffer peerAppData;
 
+  ByteBuffer handshakeBuffer;
+
   NioSslEngine(SSLEngine engine, BufferPool bufferPool) {
     SSLSession session = engine.getSession();
     int appBufferSize = session.getApplicationBufferSize();
@@ -98,7 +100,7 @@ public class NioSslEngine implements NioFilter {
           peerNetData.capacity(), engine.getSession().getPacketBufferSize()));
     }
 
-    ByteBuffer handshakeBuffer = peerNetData;
+    handshakeBuffer = peerNetData;
     handshakeBuffer.clear();
 
     ByteBuffer myAppData = ByteBuffer.wrap(new byte[0]);
@@ -419,6 +421,28 @@ public class NioSslEngine implements NioFilter {
   private int expandedCapacity(ByteBuffer sourceBuffer, ByteBuffer targetBuffer) {
     return Math.max(targetBuffer.position() + sourceBuffer.remaining() * 2,
         targetBuffer.capacity() * 2);
+  }
+
+  @VisibleForTesting
+  public ByteBufferSharing shareOutputBuffer() throws IOException {
+    return outputSharing.open();
+  }
+
+  private ByteBufferSharing shareOutputBuffer(final long time, final TimeUnit unit)
+      throws OpenAttemptTimedOut, IOException {
+    return outputSharing.open(time, unit);
+  }
+
+  public ByteBufferSharing shareInputBuffer() throws IOException {
+    return inputSharing.open();
+  }
+
+  public SSLEngine getEngine() {
+    return engine;
+  }
+
+  public ByteBuffer getHandshakeBuffer() {
+    return handshakeBuffer;
   }
 
 }

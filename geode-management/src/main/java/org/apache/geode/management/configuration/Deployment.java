@@ -25,6 +25,7 @@ import io.swagger.annotations.ApiModelProperty;
 import org.apache.geode.management.runtime.DeploymentInfo;
 
 public class Deployment extends GroupableConfiguration<DeploymentInfo> {
+  private static final long serialVersionUID = 6992732279452865384L;
   public static final String DEPLOYMENT_ENDPOINT = "/deployments";
   private String jarFileName;
   @ApiModelProperty(accessMode = READ_ONLY)

@@ -319,6 +319,14 @@ public class ServerCQImpl extends CqQueryImpl implements DataSerializable, Serve
     return serverCQResultsCache.isInitialized();
   }
 
+  @Override
+  public boolean isKeyDestroyed(Object key) {
+    if (!serverCQResultsCache.contains(key)) {
+      return false;
+    }
+    return serverCQResultsCache.isKeyDestroyed(key);
+  }
+
   /**
    * Returns the size of the CQ Result key cache.
    *

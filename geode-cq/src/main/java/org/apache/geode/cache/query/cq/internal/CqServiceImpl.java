@@ -1375,7 +1375,8 @@ public class CqServiceImpl implements CqService {
                 // with PR region.
                 if (cQuery.isCqResultsCacheInitialized()) {
                   logger.info("CQResults {}", cQuery.getCqResultKeyCache());
-                  b_cqResults_oldValue = cQuery.isPartOfCqResult(eventKey);
+                  b_cqResults_oldValue =
+                      (cQuery.isPartOfCqResult(eventKey) && !cQuery.isKeyDestroyed(eventKey));
                   logger.info("b_cqResults_oldValue is {}", b_cqResults_oldValue);
 
                   // For PR if not found in cache, apply the query on old value.

@@ -45,4 +45,6 @@ interface ServerCQResultsCache {
   boolean isOldValueRequiredForQueryProcessing(Object key);
 
   void clear();
+
+  boolean isKeyDestroyed(Object key);
 }

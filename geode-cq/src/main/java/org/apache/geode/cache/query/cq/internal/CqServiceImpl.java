@@ -1263,6 +1263,8 @@ public class CqServiceImpl implements CqService {
     EntryEvent entryEvent = (EntryEvent) event;
     Object eventKey = entryEvent.getKey();
 
+    logger.info("processEntryEvent event {}", event);
+
     boolean isDupEvent = ((EntryEventImpl) event).isPossibleDuplicate();
     // The CQ query needs to be applied when the op is update, destroy
     // invalidate and in case when op is create and its an duplicate
@@ -1299,6 +1301,8 @@ public class CqServiceImpl implements CqService {
         continue;
       }
 
+      logger.info("CQ map is {}", cqs);
+
       // Get new value. If its not retrieved.
       if (cqUnfilteredEventsSet_newValue.isEmpty()
           && (event.getOperation().isCreate() || event.getOperation().isUpdate())) {
@@ -1323,8 +1327,11 @@ public class CqServiceImpl implements CqService {
         String cqName = cQuery.getServerCqName();
         Long filterID = cQuery.getFilterID();
 
+        logger.info("cQuery is {}, cqEntry is {}", cQuery.getQueryString(), cqEntry);
+
         if (isDebugEnabled) {
           logger.debug("Processing CQ : {} Key: {}", cqName, eventKey);
+          logger.debug("matchedCqs: {}", matchedCqs);
         }
 
         Integer cqEvent = null;
@@ -1367,7 +1374,10 @@ public class CqServiceImpl implements CqService {
                 // Partitioned Regions. Once this is added remove the check
                 // with PR region.
                 if (cQuery.isCqResultsCacheInitialized()) {
+                  logger.info("CQResults {}", cQuery.getCqResultKeyCache());
                   b_cqResults_oldValue = cQuery.isPartOfCqResult(eventKey);
+                  logger.info("b_cqResults_oldValue is {}", b_cqResults_oldValue);
+
                   // For PR if not found in cache, apply the query on old value.
                   // Also apply if the query was not executed during cq execute
                   if ((cQuery.isPR || !CqServiceImpl.EXECUTE_QUERY_DURING_INIT)
@@ -1400,6 +1410,7 @@ public class CqServiceImpl implements CqService {
                           evaluateQuery(cQuery, new Object[] {cqUnfilteredEventsSet_oldValue});
                     }
 
+                    logger.info("b_cqResults_oldValue2 is {}", b_cqResults_oldValue);
                     this.stats.endCqQueryExecution(executionStartTime);
                   } else {
                     if (isDebugEnabled) {
@@ -1433,6 +1444,9 @@ public class CqServiceImpl implements CqService {
                 // If its create and caching is enabled, cache the key
                 // for this CQ.
                 cQuery.addToCqResultKeys(eventKey);
+                logger.info("CQResults added key {}, results {}", eventKey,
+                    cQuery.getCqResultKeyCache());
+
               } else if (b_cqResults_oldValue) {
                 // Base invalidate operation is treated as destroy.
                 // When the invalidate comes through, the entry will no longer

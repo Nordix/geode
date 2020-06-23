@@ -583,6 +583,7 @@ public class TXState implements TXStateInterface {
               /*
                * The routing information is derived from the PR advisor, not the bucket advisor.
                */
+              logger.info("TXState attachFilterProfileInformation entry {}", ev);
               FilterRoutingInfo fri = bucket.getPartitionedRegion().getRegionAdvisor()
                   .adviseFilterRouting(ev, Collections.EMPTY_SET);
               o.es.setFilterRoutingInfo(fri);

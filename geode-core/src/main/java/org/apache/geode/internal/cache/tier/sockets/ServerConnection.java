@@ -1421,9 +1421,16 @@ public abstract class ServerConnection implements Runnable {
       getAcceptor().decClientServerConnectionCount();
     }
 
-    try {
-      theSocket.close();
-    } catch (Exception ignored) {
+    if (getSSLEngine() != null) {
+      getSSLEngine().close(theSocket.getChannel());
+      this.nioSslEngine = null;
+    }
+
+    if (!theSocket.isClosed()) {
+      try {
+        theSocket.close();
+      } catch (Exception ignored) {
+      }
     }
 
     try {
@@ -1464,6 +1471,14 @@ public abstract class ServerConnection implements Runnable {
     terminated = true;
     Socket s = theSocket;
     if (s != null) {
+      if (getSSLEngine() != null) {
+        try {
+          getSSLEngine().close(s.getChannel());
+        } catch (Exception e) {
+          // ignore
+        }
+        this.nioSslEngine = null;
+      }
       try {
         s.close();
       } catch (IOException e) {

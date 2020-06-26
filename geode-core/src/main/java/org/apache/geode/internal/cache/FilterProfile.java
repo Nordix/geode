@@ -1082,8 +1082,6 @@ public class FilterProfile implements DataSerializableFixedID {
       return null;
     }
 
-    logger.info("FilterProfile getFilterRoutingInfoPart1 event {}", event);
-
     FilterRoutingInfo frInfo = null;
     frInfo = new FilterRoutingInfo();
     // bug #50809 - local routing for transactional ops must be done here
@@ -1131,9 +1129,6 @@ public class FilterProfile implements DataSerializableFixedID {
       CacheEvent event) {
     FilterRoutingInfo result = part1Info;
     if (localProfile.hasCacheServer) {
-      logger.info("FilterProfile getFilterRoutingInfoPart2 event {}", event);
-
-
       // bug #45520 - CQ events arriving out of order causes result set
       // inconsistency, so don't compute routings for events in conflict
       boolean isInConflict =

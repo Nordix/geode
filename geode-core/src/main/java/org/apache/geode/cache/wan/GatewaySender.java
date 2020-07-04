@@ -450,4 +450,8 @@ public interface GatewaySender {
    *
    */
   void destroy();
+
+  void setMustQueueDroppedEvents(boolean mustQueueDroppedEvents);
+
+  boolean mustQueueDroppedEvents();
 }

@@ -182,6 +182,9 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
 
   protected volatile ConcurrentLinkedQueue<EntryEventImpl> tmpDroppedEvents =
       new ConcurrentLinkedQueue<>();
+
+  private volatile boolean mustQueueDroppedEvents = true;
+
   /**
    * The number of seconds to wait before stopping the GatewaySender. Default is 0 seconds.
    */
@@ -913,6 +916,19 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
   }
 
   @Override
+  public boolean mustQueueDroppedEvents() {
+    if (this.eventProcessor == null) {
+      return false;
+    }
+    return mustQueueDroppedEvents;
+  }
+
+  @Override
+  public void setMustQueueDroppedEvents(boolean mustQueueDroppedEvents) {
+    this.mustQueueDroppedEvents = mustQueueDroppedEvents;
+  }
+
+  @Override
   public AbstractGatewaySenderEventProcessor getEventProcessor() {
     return this.eventProcessor;
   }
@@ -1035,7 +1051,7 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
 
       // If this gateway is not running, return
       if (!isRunning()) {
-        if (this.isPrimary()) {
+        if (isPrimary() && mustQueueDroppedEvents()) {
           tmpDroppedEvents.add(clonedEvent);
           if (isDebugEnabled) {
             logger.debug("add to tmpDroppedEvents for evnet {}", clonedEvent);
@@ -1138,6 +1154,7 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
    * ParallelGatewaySenderQueue.addPartitionedRegionForRegion
    */
   public void enqueueTempEvents() {
+
     if (this.eventProcessor != null) {// Fix for defect #47308
       // process tmpDroppedEvents
       EntryEventImpl droppedEvent = null;

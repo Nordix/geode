@@ -82,8 +82,8 @@ public class DurableClientTestBase extends JUnit4DistributedTestCase {
   VM publisherClientVM;
   protected String regionName;
   int server1Port;
+  int server2Port;
   String durableClientId;
-
 
   @Override
   public final void postSetUp() throws Exception {
@@ -373,7 +373,7 @@ public class DurableClientTestBase extends JUnit4DistributedTestCase {
     }
   }
 
-  private CqQuery createCq(String cqName, String cqQuery, boolean durable)
+  CqQuery createCq(String cqName, String cqQuery, boolean durable)
       throws CqException, CqExistsException {
     QueryService qs = CacheServerTestUtil.getCache().getQueryService();
     CqAttributesFactory cqf = new CqAttributesFactory();
@@ -461,7 +461,6 @@ public class DurableClientTestBase extends JUnit4DistributedTestCase {
     assertThat(bridgeServer).isNotNull();
     return bridgeServer;
   }
-
 
   Pool getClientPool(String host, int server1Port, int server2Port,
       boolean establishCallbackConnection, int redundancyLevel) {
@@ -665,14 +664,19 @@ public class DurableClientTestBase extends JUnit4DistributedTestCase {
   void checkCqListenerEvents(VM vm, final String cqName, final int numEvents,
       final int secondsToWait) {
     vm.invoke(() -> {
-      QueryService qs = CacheServerTestUtil.getCache().getQueryService();
-      CqQuery cq = qs.getCq(cqName);
-      // Get the listener and wait for the appropriate number of events
-      CacheServerTestUtil.ControlCqListener listener =
-          (CacheServerTestUtil.ControlCqListener) cq.getCqAttributes().getCqListener();
-      listener.waitWhileNotEnoughEvents(secondsToWait * 1000, numEvents);
-      assertThat(numEvents).isEqualTo(listener.events.size());
+      checkCqListenerEvents(cqName, numEvents, secondsToWait);
     });
+  }
+
+  void checkCqListenerEvents(final String cqName, final int numEvents,
+      final int secondsToWait) {
+    QueryService qs = CacheServerTestUtil.getCache().getQueryService();
+    CqQuery cq = qs.getCq(cqName);
+    // Get the listener and wait for the appropriate number of events
+    CacheServerTestUtil.ControlCqListener listener =
+        (CacheServerTestUtil.ControlCqListener) cq.getCqAttributes().getCqListener();
+    listener.waitWhileNotEnoughEvents(secondsToWait * 1000, numEvents);
+    assertThat(numEvents).isEqualTo(listener.events.size());
   }
 
   void checkListenerEvents(int numberOfEntries, final int sleepMinutes, final int eventType,
@@ -720,6 +724,15 @@ public class DurableClientTestBase extends JUnit4DistributedTestCase {
     vm.invoke(() -> {
       CacheServerTestUtil.createCacheClient(
           getClientPool(NetworkUtils.getServerHostName(), serverPort1, false),
+          regionName);
+      assertThat(CacheServerTestUtil.getClientCache()).isNotNull();
+    });
+  }
+
+  void startClient(VM vm, int serverPort1, int server2Port, String regionName) {
+    vm.invoke(() -> {
+      CacheServerTestUtil.createCacheClient(
+          getClientPool(NetworkUtils.getServerHostName(), serverPort1, server2Port, false),
           regionName);
       assertThat(CacheServerTestUtil.getClientCache()).isNotNull();
     });

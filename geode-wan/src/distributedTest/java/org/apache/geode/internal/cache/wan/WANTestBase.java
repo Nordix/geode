@@ -1647,6 +1647,56 @@ public class WANTestBase extends DistributedTestCase {
     }
   }
 
+  public static void setMustQueueDroppedEventsInSenderInVMsAsync(String senderId,
+      boolean mustQueueDroppedEvents, VM... vms) {
+    List<AsyncInvocation> tasks = new LinkedList<>();
+    for (VM vm : vms) {
+      tasks.add(vm.invokeAsync(
+          () -> getSender(senderId).setMustQueueDroppedEvents(mustQueueDroppedEvents)));
+    }
+    for (AsyncInvocation invocation : tasks) {
+      try {
+        invocation.await();
+      } catch (InterruptedException e) {
+        fail("Starting senders was interrupted");
+      }
+    }
+  }
+
+  public static void stopSenderInVMsAsync(String senderId, VM... vms) {
+    List<AsyncInvocation> tasks = new LinkedList<>();
+    for (VM vm : vms) {
+      tasks.add(vm.invokeAsync(() -> stopSender(senderId)));
+    }
+    for (AsyncInvocation invocation : tasks) {
+      try {
+        invocation.await();
+      } catch (InterruptedException e) {
+        fail("Stopping senders was interrupted");
+      }
+    }
+  }
+
+  private static GatewaySender getSender(String senderId) {
+    final IgnoredException exln = IgnoredException.addIgnoredException("Could not connect");
+    IgnoredException exp =
+        IgnoredException.addIgnoredException(ForceReattemptException.class.getName());
+    try {
+      Set<GatewaySender> senders = cache.getGatewaySenders();
+      GatewaySender sender = null;
+      for (GatewaySender s : senders) {
+        if (s.getId().equals(senderId)) {
+          sender = s;
+          break;
+        }
+      }
+      return sender;
+    } finally {
+      exp.remove();
+      exln.remove();
+    }
+  }
+
   public static void stopSender(String senderId) {
     final IgnoredException exln = IgnoredException.addIgnoredException("Could not connect");
     IgnoredException exp =
@@ -1744,6 +1794,7 @@ public class WANTestBase extends DistributedTestCase {
           numDispatcherThreadsForTheRun, GatewaySender.DEFAULT_ORDER_POLICY,
           GatewaySender.DEFAULT_SOCKET_BUFFER_SIZE);
       gateway.setGroupTransactionEvents(groupTransactionEvents);
+
       gateway.create(dsName, remoteDsId);
     } finally {
       exln.remove();

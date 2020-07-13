@@ -31,9 +31,9 @@ import org.apache.geode.internal.serialization.SerializationContext;
 import org.apache.geode.internal.serialization.Version;
 
 /**
- * Class <code>GatewayEventCallbackArgument</code> is a wrapper on a callback arg plus the id of the
- * <code>GatewaySender</code> making the request. It is created during a batch update request so
- * that the hub id is passed to the <code>GatewayReceiver</code> so that events are not
+ * Class <code>GatewaySenderEventCallbackArgument</code> is a wrapper on a callback arg plus the id
+ * of the <code>GatewaySender</code> making the request. It is created during a batch update request
+ * so that the hub id is passed to the <code>GatewayReceiver</code> so that events are not
  * re-distributed back to the originating <code>GatewayReceiver</code>, but are distributed to other
  * <code>GatewayReceiver</code>s. The original callback arg is wrapped by this one and replaced in
  * the event sent to CacheListener, CacheWriter and CacheLoader.

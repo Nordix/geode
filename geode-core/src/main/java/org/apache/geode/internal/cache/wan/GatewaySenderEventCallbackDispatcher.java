@@ -26,7 +26,7 @@ import org.apache.geode.cache.asyncqueue.AsyncEventListener;
 import org.apache.geode.logging.internal.log4j.api.LogService;
 
 /**
- * Class <code>SerialGatewayEventCallbackDispatcher</code> dispatches batches of
+ * Class <code>GatewaySenderEventCallbackDispatcher</code> dispatches batches of
  * <code>GatewayEvent</code>s to <code>AsyncEventListener</code> callback implementers. This
  * dispatcher is used in the write-behind case.
  *

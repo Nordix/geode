@@ -151,6 +151,7 @@ public class ParallelQueueRemovalMessage extends PooledDistributionMessage {
                         // Even if BucketRegionQueue does not have the key, it could be in the
                         // tempQueue
                         // remove it from there..defect #49196
+                        logger.info("alberto destroyFromTempQueue1. key: {}, bId: {}", key, bId);
                         destroyFromTempQueue(brq.getPartitionedRegion(), (Integer) bId, key);
 
                         // Finally, add the key to the failed batch removal keys so that it is
@@ -162,6 +163,7 @@ public class ParallelQueueRemovalMessage extends PooledDistributionMessage {
                     }
                   } else {// brq is null. Destroy the event from tempQueue. Defect #49196
                     destroyFromTempQueue(region, (Integer) bId, key);
+                    logger.info("alberto destroyFromTempQueue2. key: {}, bId: {}", key, bId);
                   }
                 }
               }

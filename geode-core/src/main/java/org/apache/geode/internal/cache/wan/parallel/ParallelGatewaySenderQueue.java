@@ -822,6 +822,10 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
                 } else {
                   tempQueue.add(value);
                   putDone = true;
+                  logger.info(
+                      "alberto The value {} is enqueued to the tempQueue for the BucketRegionQueue. bucketId: {}",
+                      value, bucketId);
+
                   // For debugging purpose.
                   if (isDebugEnabled) {
                     logger.debug(

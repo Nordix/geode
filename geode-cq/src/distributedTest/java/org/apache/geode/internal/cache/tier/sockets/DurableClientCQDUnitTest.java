@@ -158,9 +158,9 @@ public class DurableClientCQDUnitTest extends DurableClientTestBase {
   @Test
   public void testDurableCQServerFailoverWithoutHAConfigured()
       throws Exception {
-    String greaterThan5Query = "select * from " + SEPARATOR + regionName + " p where p.ID > 5";
-    String allQuery = "select * from " + SEPARATOR + regionName + " p where p.ID > -1";
-    String lessThan5Query = "select * from " + SEPARATOR + regionName + " p where p.ID < 5";
+    String greaterThan5Query = "select * from /" + regionName + " p where p.ID > 5";
+    String allQuery = "select * from /" + regionName + " p where p.ID > -1";
+    String lessThan5Query = "select * from /" + regionName + " p where p.ID < 5";
 
     // Start a server 1
     server1Port = this.server1VM

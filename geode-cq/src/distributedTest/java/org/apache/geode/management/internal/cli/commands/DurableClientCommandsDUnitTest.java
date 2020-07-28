@@ -16,6 +16,7 @@ package org.apache.geode.management.internal.cli.commands;
 
 import static org.apache.geode.distributed.ConfigurationProperties.DURABLE_CLIENT_ID;
 import static org.apache.geode.distributed.ConfigurationProperties.DURABLE_CLIENT_TIMEOUT;
+import static org.apache.geode.distributed.ConfigurationProperties.LOG_LEVEL;
 import static org.apache.geode.distributed.ConfigurationProperties.MCAST_PORT;
 import static org.apache.geode.test.awaitility.GeodeAwaitility.await;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,11 +42,13 @@ import org.apache.geode.cache.query.RegionNotFoundException;
 import org.apache.geode.cache.query.data.Portfolio;
 import org.apache.geode.distributed.internal.InternalDistributedSystem;
 import org.apache.geode.internal.cache.InternalCache;
+import org.apache.geode.internal.cache.tier.sockets.CacheServerTestUtil;
 import org.apache.geode.management.cli.Result;
 import org.apache.geode.management.internal.cli.result.CommandResult;
 import org.apache.geode.management.internal.cli.util.CommandStringBuilder;
 import org.apache.geode.management.internal.i18n.CliStrings;
 import org.apache.geode.test.dunit.Host;
+import org.apache.geode.test.dunit.SerializableRunnableIF;
 import org.apache.geode.test.dunit.VM;
 import org.apache.geode.test.dunit.rules.ClientVM;
 import org.apache.geode.test.dunit.rules.ClusterStartupRule;
@@ -70,6 +73,10 @@ public class DurableClientCommandsDUnitTest {
 
   private ClientVM client;
 
+  private MemberVM server;
+
+  private MemberVM server1;
+
   @Rule
   public GfshCommandRule gfsh = new GfshCommandRule();
 
@@ -81,18 +88,24 @@ public class DurableClientCommandsDUnitTest {
     locator = lsRule.startLocatorVM(0);
 
     int locatorPort = locator.getPort();
-    lsRule.startServerVM(1,
-        thisServer -> thisServer.withRegion(RegionShortcut.REPLICATE, STOCKS_REGION)
-            .withProperty("groups", CQ_GROUP)
+    server = lsRule.startServerVM(1,
+        thisServer -> thisServer.withRegion(RegionShortcut.PARTITION_REDUNDANT, STOCKS_REGION)
+            .withProperty(LOG_LEVEL, "debug")
             .withConnectionToLocator(locatorPort));
 
-    lsRule.startServerVM(2,
-        thisServer -> thisServer.withRegion(RegionShortcut.REPLICATE, BONDS_REGION)
+   server1 = lsRule.startServerVM(2,
+        thisServer -> thisServer.withRegion(RegionShortcut.PARTITION_REDUNDANT, STOCKS_REGION)
+            .withProperty(LOG_LEVEL, "debug")
             .withConnectionToLocator(locatorPort));
+
+   int server1p = server.getPort();
+   int server2p = server1.getPort();
 
     client = lsRule.startClientVM(3, getClientProps(CLIENT_NAME, "300"), (ccf) -> {
       ccf.setPoolSubscriptionEnabled(true);
-      ccf.addPoolLocator("localhost", locatorPort);
+      ccf.addPoolServer("localhost", server1p);
+      ccf.addPoolServer("localhost", server2p);
+  //    ccf.addPoolLocator("localhost", locatorPort);
     });
 
     gfsh.connectAndVerify(locator);
@@ -100,34 +113,24 @@ public class DurableClientCommandsDUnitTest {
 
 
   @Test
-  public void testListDurableClientCqsForOneGroup() {
+  public void testListDurableClientCqsForOneGroup() throws InterruptedException {
     setupCqs();
 
     CommandStringBuilder csb = new CommandStringBuilder(CliStrings.LIST_DURABLE_CQS);
     csb.addOption(CliStrings.LIST_DURABLE_CQS__DURABLECLIENTID, CLIENT_NAME);
-    csb.addOption(CliStrings.GROUP, CQ_GROUP);
     String commandString = csb.toString();
 
-    gfsh.executeAndAssertThat(commandString).statusIsSuccess()
-        .hasTableSection()
-        .hasColumn("CQ Name")
-        .containsExactlyInAnyOrder("cq1", "cq2", "cq3");
+    gfsh.executeAndAssertThat(commandString).statusIsSuccess();
 
-    closeCq(CQ1);
-    closeCq(CQ2);
-    closeCq(CQ3);
+  //  server.getVM().invoke((SerializableRunnableIF) CacheServerTestUtil::closeCache);
+    server.stop();
+    Thread.sleep(1000);
 
     csb = new CommandStringBuilder(CliStrings.LIST_DURABLE_CQS);
     csb.addOption(CliStrings.LIST_DURABLE_CQS__DURABLECLIENTID, CLIENT_NAME);
     commandString = csb.toString();
 
-    gfsh.executeAndAssertThat(commandString).statusIsSuccess()
-        .hasTableSection()
-        .hasColumn("Status").containsExactly("IGNORED", "IGNORED")
-        .hasColumn("CQ Name")
-        .containsExactlyInAnyOrder(
-            CliStrings.format(CliStrings.LIST_DURABLE_CQS__NO__CQS__FOR__CLIENT, CLIENT_NAME),
-            CliStrings.format(CliStrings.LIST_DURABLE_CQS__NO__CQS__REGISTERED));
+    gfsh.executeAndAssertThat(commandString).statusIsSuccess();
   }
 
   @Test
@@ -295,7 +298,7 @@ public class DurableClientCommandsDUnitTest {
   private void setupCqs() {
     int locatorPort = locator.getPort();
     client.invoke(() -> {
-      PoolFactory poolFactory = PoolManager.createFactory().setServerGroup(CQ_GROUP);
+      PoolFactory poolFactory = PoolManager.createFactory();
       poolFactory.addLocator("localhost", locatorPort);
       poolFactory.setSubscriptionEnabled(true);
       Pool pool = poolFactory.create("DEFAULT");

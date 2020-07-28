@@ -1115,6 +1115,7 @@ public class QueueManagerImpl implements QueueManager {
         if (((CqStateImpl) cqi.getState()).getState() != CqStateImpl.INIT
             && cqi.isDurable() == isDurable) {
           cqi.createOn(recoveredConnection, isDurable);
+          logger.info("jaleCQ recover" + isDurable);
         }
       } finally {
         UserAttributes.userAttributes.set(null);
@@ -1233,6 +1234,7 @@ public class QueueManagerImpl implements QueueManager {
     recoverInterestList(recoveredConnection, false, true, isFirstNewConnection);
     recoverInterestList(recoveredConnection, false, false, isFirstNewConnection);
     recoverCqs(recoveredConnection, false);
+    logger.info("JaleCQ recover");
     if (getPool().isDurableClient()) {
       recoverInterestList(recoveredConnection, true, true, isFirstNewConnection);
       recoverInterestList(recoveredConnection, true, false, isFirstNewConnection);

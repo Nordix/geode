@@ -367,6 +367,7 @@ public class CqServiceImpl implements CqService {
       if (attributes != null) {
         this.cqNameToUserAttributesMap.put(cq.getName(), attributes);
       }
+      logger.info("JaleCQ added1 " + tmpCqQueryMap.isEmpty());
       cqQueryMap = tmpCqQueryMap;
     }
   }
@@ -380,6 +381,7 @@ public class CqServiceImpl implements CqService {
       HashMap<String, CqQueryImpl> tmpCqQueryMap = new HashMap<>(cqQueryMap);
       tmpCqQueryMap.remove(cqName);
       this.cqNameToUserAttributesMap.remove(cqName);
+      logger.info("JaleCQ removed " + tmpCqQueryMap.isEmpty());
       cqQueryMap = tmpCqQueryMap;
     }
   }
@@ -786,9 +788,11 @@ public class CqServiceImpl implements CqService {
           String.format("Unable to retrieve durable CQs for client proxy id %s", clientProxyId));
     }
     List<ServerCQ> cqs = getAllClientCqs(clientProxyId);
+    logger.info("JaleCQ list: " + cqs.isEmpty());
     ArrayList<String> durableClientCqs = new ArrayList<>();
 
     for (ServerCQ cq : cqs) {
+      logger.info("JaleCQ: " + cq.getName());
       ServerCQImpl cQuery = (ServerCQImpl) cq;
       if (cQuery != null && cQuery.isDurable()) {
         ClientProxyMembershipID id = cQuery.getClientProxyId();

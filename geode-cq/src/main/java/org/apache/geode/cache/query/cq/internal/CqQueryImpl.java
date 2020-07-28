@@ -90,6 +90,7 @@ public abstract class CqQueryImpl implements InternalCqQuery {
     this.queryString = queryString;
     this.securityLogWriter = (InternalLogWriter) cqService.getCache().getSecurityLoggerI18n();
     this.cqService = cqService;
+    logger.info("jaleCQ: is durable " + isDurable);
     this.isDurable = isDurable;
   }
 

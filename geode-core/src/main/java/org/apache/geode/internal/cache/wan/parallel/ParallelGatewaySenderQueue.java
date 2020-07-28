@@ -490,6 +490,9 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
 
       final String prQName = sender.getId() + QSTRING + convertPathToName(userPR.getFullPath());
       prQ = (PartitionedRegion) cache.getRegion(prQName);
+
+      logger.info("ParallelGatewaySenderQueue create or restore region name: {}, region {}",
+          prQName, prQ);
       if (prQ == null) {
         // TODO:REF:Avoid deprecated apis
 
@@ -552,8 +555,11 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
           // Add the overflow statistics to the mbean
           addOverflowStatisticsToMBean(cache, prQ);
 
+          logger.info("ParallelGatewaySenderQueue start waiting for bucket recovery.");
+
           // Wait for buckets to be recovered.
           prQ.shadowPRWaitForBucketRecovery();
+
 
         } catch (IOException | ClassNotFoundException veryUnLikely) {
           logger.fatal("Unexpected Exception during init of " +
@@ -581,6 +587,8 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
           handleShadowPRExistsScenario(cache, prQ);
 
       }
+
+      logger.info("ParallelGatewaySenderQueue create or restore region finished");
 
     } finally {
       if (prQ != null) {
@@ -640,6 +648,7 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
     // now, clean up the shadowPR's buckets on this node (primary as well as
     // secondary) for a fresh start
     if (this.cleanQueues) {
+      logger.info("ParallelGatewaySenderQueue start cleanQueues.");
       Set<BucketRegion> localBucketRegions = prQ.getDataStore().getAllLocalBucketRegions();
       for (BucketRegion bucketRegion : localBucketRegions) {
         bucketRegion.clear();

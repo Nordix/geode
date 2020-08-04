@@ -278,11 +278,11 @@ public class Version extends VersionOrdinalImpl {
   public static final Version GEODE_1_12_0 =
       new Version("GEODE", "1.12.0", (byte) 1, (byte) 12, (byte) 0, (byte) 0, GEODE_1_12_0_ORDINAL);
 
-  private static final short ERICSSONGEODE_1_12_0_8_ORDINAL = 116;
+  private static final short ERICSSONGEODE_1_12_0_8_ORDINAL = 115;
 
   @Immutable
   public static final Version ERICSSONGEODE_1_12_0_8 =
-      new Version("ERICSSONGEODE", "1.12.0.4", (byte) 1, (byte) 12, (byte) 0, (byte) 4,
+      new Version("ERICSSONGEODE", "1.12.0.8", (byte) 1, (byte) 12, (byte) 0, (byte) 4,
           ERICSSONGEODE_1_12_0_8_ORDINAL);
 
   /* NOTE: when adding a new version bump the ordinal by 2. Ordinals can be short ints */

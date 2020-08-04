@@ -322,6 +322,10 @@ public class PartitionedRegionDataStore implements HasCachePerfStats {
         logger.debug("Failed grab for bucketId = {}{}{}", pr.getPRId(), pr.BUCKET_ID_SEPARATOR,
             bucketId);
       }
+      logger.info("alberto grabFreeBucketRecursively Failed grab for bucketId = {}{}{}",
+          pr.getFullPath(), pr.BUCKET_ID_SEPARATOR,
+          bucketId);
+
       // Assert.assertTrue(nList.contains(partitionedRegion.getNode().getMemberId())
       // ,
       // " grab returned false and b2n does not contains this member.");
@@ -341,6 +345,9 @@ public class PartitionedRegionDataStore implements HasCachePerfStats {
               logger.debug("Failed grab for bucketId = {}{}{}", pr.getPRId(),
                   pr.BUCKET_ID_SEPARATOR, bucketId);
             }
+            logger.info("alberto Failed grab for bucketId = {}{}{}", pr.getFullPath(),
+                pr.BUCKET_ID_SEPARATOR, bucketId);
+
             // Assert.assertTrue(nList.contains(partitionedRegion.getNode().getMemberId())
             // ,
             // " grab returned false and b2n does not contains this member.");
@@ -368,6 +375,9 @@ public class PartitionedRegionDataStore implements HasCachePerfStats {
       final boolean isRebalance, final boolean lockRedundancyLock, boolean replaceOffineData,
       InternalDistributedMember creationRequestor) {
 
+    logger.info("alberto grabFreeBucket for region: {}, possiblyFreeBucketId: {}",
+        partitionedRegion.getFullPath(), possiblyFreeBucketId);
+
     final boolean isDebugEnabled = logger.isDebugEnabled();
 
     long startTime = this.partitionedRegion.getPrStats().startBucketCreate(isRebalance);
@@ -383,6 +393,11 @@ public class PartitionedRegionDataStore implements HasCachePerfStats {
               this.partitionedRegion.getMyId(), partitionedRegion.getPRId(),
               PartitionedRegion.BUCKET_ID_SEPARATOR, possiblyFreeBucketId);
         }
+        logger.info(
+            "alberto grabFreeBucket: VM {} already contains the bucket with bucketId={}{}{}",
+            this.partitionedRegion.getMyId(), partitionedRegion.getFullPath(),
+            PartitionedRegion.BUCKET_ID_SEPARATOR, possiblyFreeBucketId);
+
         this.partitionedRegion.checkReadiness();
         return CreateBucketResult.ALREADY_EXISTS;
       }
@@ -393,6 +408,11 @@ public class PartitionedRegionDataStore implements HasCachePerfStats {
 
       try {
         if (!okToCreateChildBucket(possiblyFreeBucketId)) {
+          logger.info(
+              "alberto grabFreeBucket: !okToCreateChildBucket VM {} bucket with bucketId={}{}{}",
+              this.partitionedRegion.getMyId(), partitionedRegion.getFullPath(),
+              PartitionedRegion.BUCKET_ID_SEPARATOR, possiblyFreeBucketId);
+
           return CreateBucketResult.FAILED;
         }
         StoppableReadLock lock = this.bucketCreationLock.readLock();
@@ -402,6 +422,11 @@ public class PartitionedRegionDataStore implements HasCachePerfStats {
           // accept another bucket
           bucketCreatesInProgress.incrementAndGet();
           if (this.partitionedRegion.isDestroyed()) {
+            logger.info(
+                "alberto grabFreeBucket: this.partitionedRegion.isDestroyed() VM {} bucket with bucketId={}{}{}",
+                this.partitionedRegion.getMyId(), partitionedRegion.getFullPath(),
+                PartitionedRegion.BUCKET_ID_SEPARATOR, possiblyFreeBucketId);
+
             return CreateBucketResult.FAILED;
           }
 
@@ -413,6 +438,12 @@ public class PartitionedRegionDataStore implements HasCachePerfStats {
                 partitionedRegion.getPRId(), PartitionedRegion.BUCKET_ID_SEPARATOR,
                 possiblyFreeBucketId);
           }
+          this.logger.info("alberto grabFreeBucket: node list {} for bucketId={}{}{}",
+              PartitionedRegionHelper.printCollection(this.partitionedRegion.getRegionAdvisor()
+                  .getBucketOwners(possiblyFreeBucketId)),
+              partitionedRegion.getFullPath(), PartitionedRegion.BUCKET_ID_SEPARATOR,
+              possiblyFreeBucketId);
+
 
 
           // Final accommodation check under synchronization for
@@ -422,6 +453,11 @@ public class PartitionedRegionDataStore implements HasCachePerfStats {
             // as opposed to during bucket recovery... it is assumed that
             // ifRedudnancyNotSatisfied is false during bucket recovery
             if (!canAccommodateAnotherBucket()) {
+              logger.info(
+                  "alberto grabFreeBucket: !canAccommodateAnotherBucket() VM {} bucket with bucketId={}{}{}",
+                  this.partitionedRegion.getMyId(), partitionedRegion.getFullPath(),
+                  PartitionedRegion.BUCKET_ID_SEPARATOR, possiblyFreeBucketId);
+
               result = CreateBucketResult.FAILED;
               return result;
             }
@@ -436,6 +472,11 @@ public class PartitionedRegionDataStore implements HasCachePerfStats {
           synchronized (buk) {
             // DAN - this just needs to be done holding a lock for this particular bucket
             if (!verifyBucketBeforeGrabbing(possiblyFreeBucketId)) {
+              logger.info(
+                  "alberto grabFreeBucket: !verifyBucketBeforeGrabbing VM {} bucket with bucketId={}{}{}",
+                  this.partitionedRegion.getMyId(), partitionedRegion.getFullPath(),
+                  PartitionedRegion.BUCKET_ID_SEPARATOR, possiblyFreeBucketId);
+
               result = CreateBucketResult.FAILED;
               return result;
             }
@@ -883,6 +924,8 @@ public class PartitionedRegionDataStore implements HasCachePerfStats {
     if (logger.isDebugEnabled()) {
       logger.debug("assigning bucket {} old assignment: {}", bukReg, oldbukReg);
     }
+    logger.info("alberto assigning bucket {} in region: {}, old assignment: {}", bucketId, bukReg,
+        oldbukReg);
     Assert.assertTrue(oldbukReg == null);
   }
 

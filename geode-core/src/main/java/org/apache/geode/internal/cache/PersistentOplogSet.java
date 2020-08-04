@@ -345,6 +345,7 @@ public class PersistentOplogSet implements OplogSet {
   void recoverRegionsThatAreReady() {
     // The following sync also prevents concurrent recoveries by multiple regions
     // which is needed currently.
+    logger.info("alberto recoverRegionsThatAreReady");
     synchronized (getAlreadyRecoveredOnce()) {
 
       // need to take a snapshot of DiskRecoveryStores we will recover

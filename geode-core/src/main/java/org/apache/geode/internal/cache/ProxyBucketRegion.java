@@ -419,17 +419,21 @@ public class ProxyBucketRegion implements Bucket {
   }
 
   public void recoverFromDisk() {
-    final boolean isDebugEnabled = logger.isDebugEnabled();
+    logger.info("alberto recoverFromDisk. Region: {}, BucketRegion: {}, bid: {}",
+        partitionedRegion.getFullPath(),
+        realBucket, bid);
+    final boolean isDebugEnabled = true;
 
     RuntimeException exception = null;
     if (isDebugEnabled) {
-      logger.debug("{} coming to recover from disk. wasHosting {}", getFullPath(),
-          persistenceAdvisor.wasHosting());
+      logger.info("alberto {} coming to recover from disk. wasHosting {}, bid: {}", getFullPath(),
+          persistenceAdvisor.wasHosting(), bid);
     }
     try {
       if (persistenceAdvisor.wasHosting()) {
         if (isDebugEnabled) {
-          logger.debug("{} used to host data. Attempting to recover.", getFullPath());
+          logger.info("alberto {} used to host data. Attempting to recover. bid: {}.",
+              getFullPath(), bid);
         }
         CreateBucketResult result;
         if (hasPersistentChildRegion()) {
@@ -439,6 +443,9 @@ public class ProxyBucketRegion implements Bucket {
           // child region.
           result = partitionedRegion.getDataStore().grabBucket(bid,
               getDistributionManager().getDistributionManagerId(), true, true, false, null, true);
+          logger.info(
+              "alberto ProxyBucketRegion.recoverFromDisk. hasPersistentChildRegion() partitionedRegion.getDataStore().grabBucket() region: {}, bid: {}",
+              getFullPath(), bid);
         } else {
           if (this.partitionedRegion.isShadowPR()
               && this.partitionedRegion.getColocatedWith() != null) {
@@ -450,24 +457,45 @@ public class ProxyBucketRegion implements Bucket {
               result = colocatedRegion.getDataStore().grabBucket(bid,
                   getDistributionManager().getDistributionManagerId(), true, true, false, null,
                   true);
+              logger.info(
+                  "alberto ProxyBucketRegion.recoverFromDisk. this.partitionedRegion.getDataPolicy().withPersistence() colocatedRegion.getDataStore().grabBucket() region: {}, bid: {}",
+                  getFullPath(), bid);
 
               if (result.nowExists()) {
                 result = partitionedRegion.getDataStore().grabBucket(bid, null, true, false, false,
                     null, true);
+                logger.info(
+                    "alberto ProxyBucketRegion.recoverFromDisk. result.nowExists() partitionedRegion.getDataStore().grabBucket(), region: {}, grabBucket bid: {}",
+                    getFullPath(), bid);
               }
             } else {
               result = partitionedRegion.getDataStore().grabBucket(bid, null, true, false, false,
                   null, true);
+              logger.info(
+                  "alberto ProxyBucketRegion.recoverFromDisk. !this.partitionedRegion.isShadowPR()||!colocated partitionedRegion.getDataStore().grabBucket region: {}, bid: {}",
+                  getFullPath(), bid);
+
             }
           } else {
             result = partitionedRegion.getDataStore().grabBucket(bid, null, true, false, false,
                 null, true);
+            logger.info(
+                "alberto ProxyBucketRegion.recoverFromDisk. !this.partitionedRegion.isShadowPR()||!colocated partitionedRegion.getDataStore().grabBucket region: {}, bid: {}",
+                getFullPath(), bid);
           }
 
         }
         if (result.nowExists()) {
+          logger.info(
+              "alberto {} result.nowExists(), bid: {}",
+              getFullPath(), bid);
+
           return;
         } else if (result != CreateBucketResult.REDUNDANCY_ALREADY_SATISFIED) {
+          logger.info(
+              "alberto {} result != CreateBucketResult.REDUNDANCY_ALREADY_SATISFIED, bid: {}",
+              getFullPath(), bid);
+
           // TODO prpersist - check cache closure, create new error message
           this.partitionedRegion.checkReadiness();
           throw new InternalGemFireError(
@@ -475,8 +503,8 @@ public class ProxyBucketRegion implements Bucket {
         }
 
         if (isDebugEnabled) {
-          logger.debug(
-              "{} redundancy is already satisfied, so discarding persisted data. Current hosts {}",
+          logger.info(
+              "alberto {} redundancy is already satisfied, so discarding persisted data. Current hosts {}",
               getFullPath(), advisor.adviseReplicates());
         }
 
@@ -485,7 +513,7 @@ public class ProxyBucketRegion implements Bucket {
       }
 
       if (isDebugEnabled) {
-        logger.debug("{} initializing membership view from peers", getFullPath());
+        logger.info("alberto {} initializing membership view from peers", getFullPath());
       }
 
       persistenceAdvisor.initializeMembershipView();

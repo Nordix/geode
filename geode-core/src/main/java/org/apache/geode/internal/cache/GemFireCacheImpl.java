@@ -3157,8 +3157,11 @@ public class GemFireCacheImpl implements InternalCache, InternalClientCache, Has
     // do this before checking the pathToRegion map
     InternalRegion result = getReinitializingRegion(path);
     if (result != null) {
+      // logger.info("alberto getInternalRegionByPath. path: {}, result: {}", path, result);
       return result;
     }
+    // logger.info("alberto getInternalRegionByPath. path: {}, pathToRegion: {}", path,
+    // pathToRegion);
     return pathToRegion.get(path);
   }
 

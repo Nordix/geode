@@ -208,6 +208,11 @@ public class ParallelGatewaySenderImpl extends AbstractRemoteGatewaySender {
           this, clonedEvent.getKey(), bucketId, originalEventId, originatingThreadId, newEventId,
           newThreadId);
     }
+    logger.info(
+        "alberto {}: Generated event id for event with key={}, bucketId={}, original event id={}, threadId={}, new event id={}, newThreadId={}",
+        this, clonedEvent.getKey(), bucketId, originalEventId, originatingThreadId, newEventId,
+        newThreadId);
+
     clonedEvent.setEventId(newEventId);
   }
 

@@ -532,6 +532,7 @@ public class PartitionedRegionHelper {
     if (pr.isFixedPartitionedRegion()) {
       String partition = null;
       if (resolver instanceof FixedPartitionResolver) {
+        logger.info("alberto fixed resolver for key: {} is {}", key, resolver);
         Map<String, Integer[]> partitionMap = pr.getPartitionsMap();
         if (event == null) {
           event = new EntryOperationImpl(pr, operation, key, value, callbackArgument);
@@ -554,12 +555,17 @@ public class PartitionedRegionHelper {
         }
         int numBukets = bucketArray[1];
         resolveKey = (numBukets == 1) ? partition : resolver.getRoutingObject(event);
+        logger.info("alberto fixed resolver for key: {}, resolveKey: {}, is {}", key, resolveKey,
+            resolver);
       } else if (resolver == null) {
+        logger.info("alberto no fixed resolver for key: {}", key);
         throw new IllegalStateException(
             String.format(
                 "For FixedPartitionedRegion %s, FixedPartitionResolver is not available (neither through the partition attribute partition-resolver nor key/callbackArg implementing FixedPartitionResolver)",
                 pr.getName()));
       } else {
+        logger.info("alberto fixed resolver for key: {} is {} but was not found", key,
+            resolver.getName());
         Object[] prms = new Object[] {pr.getName(), resolver};
         throw new IllegalStateException(
             String.format(
@@ -570,16 +576,20 @@ public class PartitionedRegionHelper {
     } else {
       // Calculate resolveKey.
       if (resolver == null) {
+        logger.info("alberto no resolver for key: {} ", key);
         // no custom partitioning at all
         resolveKey = key;
         if (resolveKey == null) {
           throw new IllegalStateException("attempting to hash null");
         }
       } else {
+        logger.info("alberto resolver for key: {} is: {} ", key, resolver.getName());
         if (event == null) {
           event = new EntryOperationImpl(pr, operation, key, value, callbackArgument);
         }
         resolveKey = resolver.getRoutingObject(event);
+        logger.info("alberto resolver for key: {}, resolveKey: {}, is: {} ", key, resolveKey,
+            resolver.getName());
         if (resolveKey == null) {
           throw new IllegalStateException(
               "The RoutingObject returned by PartitionResolver is null.");

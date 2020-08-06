@@ -335,7 +335,8 @@ public class DistributedPutAllOperation extends AbstractUpdateOperation {
      * Constructor to use when receiving a putall from someone else
      */
     public PutAllEntryData(DataInput in, DeserializationContext context, EventID baseEventID,
-        int idx) throws IOException, ClassNotFoundException {
+        int idx, Version version,
+        ByteArrayDataInput bytesIn) throws IOException, ClassNotFoundException {
       this.key = context.getDeserializer().readObject(in);
       byte flgs = in.readByte();
       if ((flgs & IS_OBJECT) != 0) {
@@ -1213,7 +1214,7 @@ public class DistributedPutAllOperation extends AbstractUpdateOperation {
         final Version version = StaticSerialization.getVersionForDataStreamOrNull(in);
         final ByteArrayDataInput bytesIn = new ByteArrayDataInput();
         for (int i = 0; i < this.putAllDataSize; i++) {
-          this.putAllData[i] = new PutAllEntryData(in, context, eventId, i);
+          this.putAllData[i] = new PutAllEntryData(in, context, eventId, i, version, bytesIn);
         }
 
         boolean hasTags = in.readBoolean();

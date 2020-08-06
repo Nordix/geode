@@ -27,9 +27,8 @@ import org.apache.geode.distributed.internal.membership.api.MemberIdentifier;
 import org.apache.geode.internal.serialization.DeserializationContext;
 import org.apache.geode.internal.serialization.SerializationContext;
 import org.apache.geode.internal.serialization.StaticSerialization;
+import org.apache.geode.internal.serialization.UnsupportedSerializationVersionException;
 import org.apache.geode.internal.serialization.Version;
-import org.apache.geode.internal.serialization.VersionOrdinal;
-import org.apache.geode.internal.serialization.Versioning;
 
 /**
  * GMSMember contains data that is required to identify a member of the cluster.
@@ -80,15 +79,7 @@ public class GMSMemberData implements MemberData, Comparable<GMSMemberData> {
    * displayable.
    */
   private String uniqueTag = null;
-
-  /**
-   * versionOrdinal is stored here as a VersionOrdinal and not a Version, because
-   * GMSMemberData needs to sometimes store the version of a new product version,
-   * e.g. during rolling upgrade members with old versions receive member identifiers
-   * from members with new (unknown) versions.
-   */
-  private transient VersionOrdinal versionOrdinal =
-      Versioning.getVersionOrdinal(Version.CURRENT.ordinal());
+  private transient Version versionObj = Version.CURRENT;
 
   /**
    * whether this is a partial member ID (without roles, durable attributes). We use partial IDs in
@@ -111,7 +102,7 @@ public class GMSMemberData implements MemberData, Comparable<GMSMemberData> {
    * @param networkPartitionDetectionEnabled whether the member has network partition detection
    *        enabled
    * @param preferredForCoordinator whether the member can be group coordinator
-   * @param versionOrdinal the member's version ordinal
+   * @param version the member's version ordinal
    * @param msbs - most significant bytes of UUID
    * @param lsbs - least significant bytes of UUID
    */
@@ -121,7 +112,7 @@ public class GMSMemberData implements MemberData, Comparable<GMSMemberData> {
       String name, String[] groups,
       String durableId, int durableTimeout,
       boolean networkPartitionDetectionEnabled, boolean preferredForCoordinator,
-      short versionOrdinal,
+      short version,
       long msbs, long lsbs, byte memberWeight, boolean isPartial, String uniqueTag) {
     this.inetAddr = i;
     this.hostName = hostName;
@@ -136,7 +127,7 @@ public class GMSMemberData implements MemberData, Comparable<GMSMemberData> {
     this.durableTimeout = durableTimeout;
     this.networkPartitionDetectionEnabled = networkPartitionDetectionEnabled;
     this.preferredForCoordinator = preferredForCoordinator;
-    this.versionOrdinal = Versioning.getVersionOrdinal(versionOrdinal);
+    setVersionObject(version);
     this.uuidMSBs = msbs;
     this.uuidLSBs = lsbs;
     this.memberWeight = memberWeight;
@@ -144,12 +135,19 @@ public class GMSMemberData implements MemberData, Comparable<GMSMemberData> {
     this.uniqueTag = uniqueTag;
   }
 
-  public GMSMemberData(InetAddress i, int p, short versionOrdinal, long msbs, long lsbs,
-      int viewId) {
+  private void setVersionObject(short versionOrdinal) {
+    try {
+      this.versionObj = Version.fromOrdinal(versionOrdinal);
+    } catch (UnsupportedSerializationVersionException e) {
+      this.versionObj = Version.CURRENT;
+    }
+  }
+
+  public GMSMemberData(InetAddress i, int p, short version, long msbs, long lsbs, int viewId) {
     this.inetAddr = i;
     this.hostName = i.getHostName();
     this.udpPort = p;
-    this.versionOrdinal = Versioning.getVersionOrdinal(versionOrdinal);
+    setVersionObject(version);
     this.uuidMSBs = msbs;
     this.uuidLSBs = lsbs;
     this.vmViewId = viewId;
@@ -178,7 +176,7 @@ public class GMSMemberData implements MemberData, Comparable<GMSMemberData> {
     this.durableId = other.durableId;
     this.durableTimeout = other.durableTimeout;
     this.groups = other.groups;
-    this.versionOrdinal = other.versionOrdinal;
+    this.versionObj = other.versionObj;
     this.uuidLSBs = other.uuidLSBs;
     this.uuidMSBs = other.uuidMSBs;
     this.isPartial = other.isPartial;
@@ -222,12 +220,12 @@ public class GMSMemberData implements MemberData, Comparable<GMSMemberData> {
   @Override
 
   public short getVersionOrdinal() {
-    return versionOrdinal.ordinal();
+    return this.versionObj.ordinal();
   }
 
   @Override
-  public VersionOrdinal getVersionOrdinalObject() {
-    return versionOrdinal;
+  public Version getVersion() {
+    return versionObj;
   }
 
   @Override
@@ -237,7 +235,7 @@ public class GMSMemberData implements MemberData, Comparable<GMSMemberData> {
 
   @Override
   public void setVersionOrdinal(short versionOrdinal) {
-    this.versionOrdinal = Versioning.getVersionOrdinal(versionOrdinal);
+    setVersionObject(versionOrdinal);
   }
 
   @Override
@@ -508,7 +506,7 @@ public class GMSMemberData implements MemberData, Comparable<GMSMemberData> {
 
   @Override
   public void setVersion(Version v) {
-    setVersionOrdinal(v.ordinal());
+    this.versionObj = v;
   }
 
   @Override
@@ -583,7 +581,7 @@ public class GMSMemberData implements MemberData, Comparable<GMSMemberData> {
   @Override
   public void readEssentialData(DataInput in,
       DeserializationContext context) throws IOException, ClassNotFoundException {
-    setVersionOrdinal(Version.readOrdinal(in));
+    setVersionObject(Version.readOrdinal(in));
 
     int flags = in.readShort();
     this.networkPartitionDetectionEnabled = (flags & NPD_ENABLED_BIT) != 0;

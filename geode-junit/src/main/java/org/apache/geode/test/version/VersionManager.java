@@ -152,7 +152,7 @@ public class VersionManager {
   }
 
   private void findVersions(String fileName) {
-    // this file is created by the gradle task :geode-old-versions:createGeodeClasspathsFile
+    // this file is created by the gradle task createClasspathsPropertiesFile
     readVersionsFile(fileName, (version, path) -> {
       Optional<String> parsedVersion = parseVersion(version);
       if (parsedVersion.isPresent()) {
@@ -198,7 +198,7 @@ public class VersionManager {
   }
 
   public Properties readPropertiesFile(String fileName) {
-    // this file is created by the gradle task :geode-old-versions:createGeodeClasspathsFile
+    // this file is created by the gradle task createClasspathsPropertiesFile
     Properties props = new Properties();
     URL url = VersionManager.class.getResource("/" + fileName);
     if (url == null) {

@@ -186,7 +186,7 @@ public class PartitionedRegionQueryEvaluator extends StreamingPartitionOperation
     // we will have to sort it
     boolean sortNeeded = false;
     List<CompiledSortCriterion> orderByAttribs = null;
-    if (sender.getVersionOrdinalObject().isOlderThan(Version.GFE_90)) {
+    if (sender.getVersionObject().compareTo(Version.GFE_90) < 0) {
       CompiledSelect cs = this.query.getSimpleSelect();
       if (cs != null && cs.isOrderBy()) {
         sortNeeded = true;

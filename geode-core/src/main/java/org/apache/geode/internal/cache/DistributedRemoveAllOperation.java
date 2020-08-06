@@ -50,9 +50,12 @@ import org.apache.geode.internal.cache.versions.VersionTag;
 import org.apache.geode.internal.offheap.annotations.Released;
 import org.apache.geode.internal.offheap.annotations.Retained;
 import org.apache.geode.internal.offheap.annotations.Unretained;
+import org.apache.geode.internal.serialization.ByteArrayDataInput;
 import org.apache.geode.internal.serialization.DataSerializableFixedID;
 import org.apache.geode.internal.serialization.DeserializationContext;
 import org.apache.geode.internal.serialization.SerializationContext;
+import org.apache.geode.internal.serialization.StaticSerialization;
+import org.apache.geode.internal.serialization.Version;
 import org.apache.geode.logging.internal.log4j.api.LogService;
 
 /**
@@ -315,7 +318,8 @@ public class DistributedRemoveAllOperation extends AbstractUpdateOperation {
     /**
      * Constructor to use when receiving a putall from someone else
      */
-    public RemoveAllEntryData(DataInput in, EventID baseEventID, int idx,
+    public RemoveAllEntryData(DataInput in, EventID baseEventID, int idx, Version version,
+        ByteArrayDataInput bytesIn,
         DeserializationContext context) throws IOException, ClassNotFoundException {
       this.key = context.getDeserializer().readObject(in);
       this.oldValue = null;
@@ -987,8 +991,10 @@ public class DistributedRemoveAllOperation extends AbstractUpdateOperation {
       this.removeAllDataSize = (int) InternalDataSerializer.readUnsignedVL(in);
       this.removeAllData = new RemoveAllEntryData[this.removeAllDataSize];
       if (this.removeAllDataSize > 0) {
+        final Version version = StaticSerialization.getVersionForDataStreamOrNull(in);
+        final ByteArrayDataInput bytesIn = new ByteArrayDataInput();
         for (int i = 0; i < this.removeAllDataSize; i++) {
-          this.removeAllData[i] = new RemoveAllEntryData(in, eventId, i, context);
+          this.removeAllData[i] = new RemoveAllEntryData(in, eventId, i, version, bytesIn, context);
         }
 
         boolean hasTags = in.readBoolean();

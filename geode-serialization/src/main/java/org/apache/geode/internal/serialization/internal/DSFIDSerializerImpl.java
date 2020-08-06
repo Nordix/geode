@@ -41,6 +41,7 @@ import org.apache.geode.internal.serialization.SerializationContext;
 import org.apache.geode.internal.serialization.SerializationVersions;
 import org.apache.geode.internal.serialization.StaticSerialization;
 import org.apache.geode.internal.serialization.Version;
+import org.apache.geode.internal.serialization.VersionedDataStream;
 
 public class DSFIDSerializerImpl implements DSFIDSerializer {
 
@@ -188,7 +189,7 @@ public class DSFIDSerializerImpl implements DSFIDSerializer {
       boolean invoked = false;
       Version v = context.getSerializationVersion();
 
-      if (!Version.CURRENT.equals(v)) {
+      if (!v.isCurrentVersion()) {
         // get versions where DataOutput was upgraded
         SerializationVersions sv = (SerializationVersions) ds;
         Version[] versions = sv.getSerializationVersions();
@@ -215,6 +216,20 @@ public class DSFIDSerializerImpl implements DSFIDSerializer {
         | InvocationTargetException e) {
       throw new IOException(
           "problem invoking toData method on object of class" + ds.getClass().getName(), e);
+    }
+  }
+
+  /**
+   * Get the Version of the peer or disk store that created this {@link DataOutput}.
+   * Returns
+   * zero if the version is same as this member's.
+   */
+  public Version getVersionForDataStreamOrNull(DataOutput out) {
+    // check if this is a versioned data output
+    if (out instanceof VersionedDataStream) {
+      return ((VersionedDataStream) out).getVersion();
+    } else {
+      return null;
     }
   }
 
@@ -292,7 +307,7 @@ public class DSFIDSerializerImpl implements DSFIDSerializer {
     try {
       boolean invoked = false;
       Version v = context.getSerializationVersion();
-      if (!Version.CURRENT.equals(v) && ds instanceof SerializationVersions) {
+      if (!v.isCurrentVersion() && ds instanceof SerializationVersions) {
         // get versions where DataOutput was upgraded
         Version[] versions = null;
         SerializationVersions vds = (SerializationVersions) ds;

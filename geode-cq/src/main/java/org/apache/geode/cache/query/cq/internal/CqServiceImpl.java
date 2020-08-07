@@ -1369,7 +1369,6 @@ public class CqServiceImpl implements CqService {
                 if (cQuery.isCqResultsCacheInitialized()) {
                   b_cqResults_oldValue =
                       (cQuery.isPartOfCqResult(eventKey) && !cQuery.isKeyDestroyed(eventKey));
-
                   // For PR if not found in cache, apply the query on old value.
                   // Also apply if the query was not executed during cq execute
                   if ((cQuery.isPR || !CqServiceImpl.EXECUTE_QUERY_DURING_INIT)

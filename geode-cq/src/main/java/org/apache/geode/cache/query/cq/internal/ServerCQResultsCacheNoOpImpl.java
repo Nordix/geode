@@ -64,11 +64,10 @@ class ServerCQResultsCacheNoOpImpl implements ServerCQResultsCache {
   }
 
   @Override
-  public void clear() {}
-
-  @Override
   public boolean isKeyDestroyed(Object key) {
     return false;
   }
 
+  @Override
+  public void clear() {}
 }

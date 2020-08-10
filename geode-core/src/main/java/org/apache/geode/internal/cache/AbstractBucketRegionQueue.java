@@ -212,24 +212,17 @@ public abstract class AbstractBucketRegionQueue extends BucketRegion {
   }
 
   protected void loadEventsFromTempQueue() {
-    logger.info("alberto For bucket {} about to load events from the temp queue...", getId());
     if (logger.isDebugEnabled()) {
       logger.debug("For bucket {} about to load events from the temp queue...", getId());
     }
     Set queues = this.getPartitionedRegion().getParallelGatewaySender().getQueues();
-
     if (queues != null) {
-      logger.info("alberto For bucket {} about to load events from the temp queue queues!=null...",
-          getId());
       ConcurrentParallelGatewaySenderQueue prq =
           (ConcurrentParallelGatewaySenderQueue) queues.toArray()[0];
       // synchronized (prq.getBucketToTempQueueMap()) {
       BlockingQueue<GatewaySenderEventImpl> tempQueue = prq.getBucketTmpQueue(getId());
       // .getBucketToTempQueueMap().get(getId());
       if (tempQueue != null && !tempQueue.isEmpty()) {
-        logger.info(
-            "alberto For bucket {} about to load events from the temp queue !tempQueue.isEmpty()...",
-            getId());
         synchronized (tempQueue) {
           try {
             // ParallelQueueRemovalMessage checks for the key in BucketRegionQueue
@@ -240,9 +233,6 @@ public abstract class AbstractBucketRegionQueue extends BucketRegion {
             // add the events from tempQueue to the region
             GatewaySenderEventImpl event;
             while ((event = tempQueue.poll()) != null) {
-              logger.info(
-                  "alberto For bucket {} about to load events from the temp queue tempQueue.poll(): {}...",
-                  getId(), event);
               try {
                 event.setPossibleDuplicate(true);
                 if (this.addToQueue(event.getShadowKey(), event)) {
@@ -264,7 +254,6 @@ public abstract class AbstractBucketRegionQueue extends BucketRegion {
               for (GatewaySenderEventImpl e : tempQueue) {
                 e.release();
               }
-              logger.info("alberto clearing tempQueue for {}", getId());
               tempQueue.clear();
             }
             getInitializationLock().writeLock().unlock();

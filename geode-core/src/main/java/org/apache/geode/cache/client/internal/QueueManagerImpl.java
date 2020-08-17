@@ -1114,6 +1114,8 @@ public class QueueManagerImpl implements QueueManager {
       try {
         if (((CqStateImpl) cqi.getState()).getState() != CqStateImpl.INIT
             && cqi.isDurable() == isDurable) {
+          logger.info("Recovering CQ with name: \"{}\" and isDurable flag: {}", cqi.getName(),
+              cqi.isDurable());
           cqi.createOn(recoveredConnection, isDurable);
         }
       } finally {

@@ -499,16 +499,8 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
       final String prQName = sender.getId() + QSTRING + convertPathToName(userPR.getFullPath());
       prQ = (PartitionedRegion) cache.getRegion(prQName);
 
-      if (prQ != null && this.cleanQueues && this.index == 0) {
-        logger.info("ParallelGatewaySenderQueue destroy region name: {}, region {}",
-            prQName, prQ);
-        prQ.destroyRegion(null);
-        prQ = null;
-      }
-
       logger.info("ParallelGatewaySenderQueue create or restore region name: {}, region {}",
           prQName, prQ);
-
       if (prQ == null) {
         // TODO:REF:Avoid deprecated apis
 
@@ -585,16 +577,14 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
         if (logger.isDebugEnabled()) {
           logger.debug("{}: Created queue region: {}", this, prQ);
         }
-        /*
-         * if ((prQ != null) && this.cleanQueues) {
-         * // now, clean up the shadowPR's buckets on this node (primary as well as
-         * // secondary) for a fresh start
-         * Set<BucketRegion> localBucketRegions = prQ.getDataStore().getAllLocalBucketRegions();
-         * for (BucketRegion bucketRegion : localBucketRegions) {
-         * bucketRegion.clear();
-         * }
-         * }
-         */
+        if ((prQ != null) && this.cleanQueues) {
+          // now, clean up the shadowPR's buckets on this node (primary as well as
+          // secondary) for a fresh start
+          Set<BucketRegion> localBucketRegions = prQ.getDataStore().getAllLocalBucketRegions();
+          for (BucketRegion bucketRegion : localBucketRegions) {
+            bucketRegion.clear();
+          }
+        }
 
       } else {
         if (isAccessor)
@@ -665,16 +655,13 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
     }
     // now, clean up the shadowPR's buckets on this node (primary as well as
     // secondary) for a fresh start
-    /*
-     * if (this.cleanQueues) {
-     * logger.info("ParallelGatewaySenderQueue start cleanQueues/destroy.");
-     *
-     * Set<BucketRegion> localBucketRegions = prQ.getDataStore().getAllLocalBucketRegions();
-     * for (BucketRegion bucketRegion : localBucketRegions) {
-     * bucketRegion.clear();
-     * }
-     * }
-     */
+    if (this.cleanQueues) {
+      logger.info("ParallelGatewaySenderQueue start cleanQueues.");
+      Set<BucketRegion> localBucketRegions = prQ.getDataStore().getAllLocalBucketRegions();
+      for (BucketRegion bucketRegion : localBucketRegions) {
+        bucketRegion.clear();
+      }
+    }
   }
 
   protected void afterRegionAdd(PartitionedRegion userPR) {

@@ -48,6 +48,7 @@ import org.apache.geode.cache.configuration.DiskStoreType;
 import org.apache.geode.distributed.Locator;
 import org.apache.geode.distributed.internal.InternalConfigurationPersistenceService;
 import org.apache.geode.distributed.internal.InternalLocator;
+import org.apache.geode.internal.cache.DiskInitFile;
 import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.cache.SnapshotTestUtil;
 import org.apache.geode.management.internal.cli.result.model.TabularResultModel;
@@ -524,17 +525,22 @@ public class DiskStoreCommandsDUnitTest implements Serializable {
   @Parameters({"compact offline-disk-store", "describe offline-disk-store",
       "upgrade offline-disk-store", "validate offline-disk-store",
       "alter disk-store --region=testRegion --enable-statistics=true"})
-  public void offlineDiskStoreCommandShouldNotPassIfDiskStoreFileDoesNotExist(
+
+  public void offlineDiskStoreCommandShouldFailWhenDiskStoreFileDoesNotExist(
+
       String baseCommand) {
     Path diskStorePath =
         Paths.get(tempDir.getRoot().getAbsolutePath());
     assertThat(Files.exists(diskStorePath)).isTrue();
     Path diskStoreFilePath =
-        Paths.get(diskStorePath + File.separator + "BACKUPnonExistingDiskStore" + IF_FILE_EXT);
+
+        Paths.get(diskStorePath + File.separator + "BACKUPnonExistingDiskStore"
+            + DiskInitFile.IF_FILE_EXT);
     assertThat(Files.exists(diskStoreFilePath)).isFalse();
     gfsh.executeAndAssertThat(baseCommand + " --name=nonExistingDiskStore --disk-dirs="
-        + diskStoreFilePath.toAbsolutePath().toString()).statusIsError()
-        .containsOutput("Could not find:");
+        + diskStorePath.toAbsolutePath().toString()).statusIsError()
+        .containsOutput("The init file " + diskStoreFilePath + " does not exist.");
+
     assertThat(Files.exists(diskStoreFilePath)).isFalse();
   }
 

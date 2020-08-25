@@ -67,6 +67,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutionException;
@@ -1112,14 +1113,7 @@ public class WANTestBase extends DistributedTestCase {
     IgnoredException exp1 =
         IgnoredException.addIgnoredException(InterruptedException.class.getName());
     try {
-      Set<GatewaySender> senders = cache.getGatewaySenders();
-      GatewaySender sender = null;
-      for (GatewaySender s : senders) {
-        if (s.getId().equals(senderId)) {
-          sender = s;
-          break;
-        }
-      }
+      GatewaySender sender = getGatewaySender(senderId);
       sender.start();
     } finally {
       exp.remove();
@@ -1137,14 +1131,7 @@ public class WANTestBase extends DistributedTestCase {
     IgnoredException exp1 =
         IgnoredException.addIgnoredException(InterruptedException.class.getName());
     try {
-      Set<GatewaySender> senders = cache.getGatewaySenders();
-      GatewaySender sender = null;
-      for (GatewaySender s : senders) {
-        if (s.getId().equals(senderId)) {
-          sender = s;
-          break;
-        }
-      }
+      GatewaySender sender = getGatewaySender(senderId);
       sender.startWithCleanQueue();
     } finally {
       exp.remove();
@@ -1155,26 +1142,12 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   public static void enableConflation(String senderId) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    AbstractGatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = (AbstractGatewaySender) s;
-        break;
-      }
-    }
+    AbstractGatewaySender sender = getAbstractGatewaySender(senderId);
     sender.test_setBatchConflationEnabled(true);
   }
 
   public static Map getSenderToReceiverConnectionInfo(String senderId) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     Map connectionInfo = null;
     if (!sender.isParallel() && ((AbstractGatewaySender) sender).isPrimary()) {
       connectionInfo = new HashMap();
@@ -1537,14 +1510,7 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   public static HashMap checkQueue_BR(String senderId, int numBuckets) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     RegionQueue parallelQueue =
         ((AbstractGatewaySender) sender).getQueues().toArray(new RegionQueue[1])[0];
 
@@ -1585,14 +1551,7 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   private void addCacheListenerOnQueueBucketRegion(String senderId, int numBuckets) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     RegionQueue parallelQueue =
         ((AbstractGatewaySender) sender).getQueues().toArray(new RegionQueue[1])[0];
 
@@ -1631,14 +1590,7 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   private void addCacheQueueListener(String senderId, boolean isParallel) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     listener1 = new QueueListener();
     if (!isParallel) {
       Set<RegionQueue> queues = ((AbstractGatewaySender) sender).getQueues();
@@ -1653,14 +1605,7 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   private void addSecondCacheQueueListener(String senderId, boolean isParallel) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     listener2 = new QueueListener();
     if (!isParallel) {
       Set<RegionQueue> queues = ((AbstractGatewaySender) sender).getQueues();
@@ -1679,14 +1624,7 @@ public class WANTestBase extends DistributedTestCase {
     IgnoredException exp =
         IgnoredException.addIgnoredException(ForceReattemptException.class.getName());
     try {
-      Set<GatewaySender> senders = cache.getGatewaySenders();
-      GatewaySender sender = null;
-      for (GatewaySender s : senders) {
-        if (s.getId().equals(senderId)) {
-          sender = s;
-          break;
-        }
-      }
+      GatewaySender sender = getGatewaySender(senderId);
       sender.pause();
       ((AbstractGatewaySender) sender).getEventProcessor().waitForDispatcherToPause();
 
@@ -1701,14 +1639,7 @@ public class WANTestBase extends DistributedTestCase {
     IgnoredException exp =
         IgnoredException.addIgnoredException(ForceReattemptException.class.getName());
     try {
-      Set<GatewaySender> senders = cache.getGatewaySenders();
-      GatewaySender sender = null;
-      for (GatewaySender s : senders) {
-        if (s.getId().equals(senderId)) {
-          sender = s;
-          break;
-        }
-      }
+      GatewaySender sender = getGatewaySender(senderId);
       sender.resume();
     } finally {
       exp.remove();
@@ -1771,14 +1702,7 @@ public class WANTestBase extends DistributedTestCase {
     IgnoredException exp =
         IgnoredException.addIgnoredException(ForceReattemptException.class.getName());
     try {
-      Set<GatewaySender> senders = cache.getGatewaySenders();
-      GatewaySender sender = null;
-      for (GatewaySender s : senders) {
-        if (s.getId().equals(senderId)) {
-          sender = s;
-          break;
-        }
-      }
+      GatewaySender sender = getGatewaySender(senderId);
       AbstractGatewaySenderEventProcessor eventProcessor = null;
       if (sender instanceof AbstractGatewaySender) {
         eventProcessor = ((AbstractGatewaySender) sender).getEventProcessor();
@@ -3248,14 +3172,7 @@ public class WANTestBase extends DistributedTestCase {
     IgnoredException exp1 =
         IgnoredException.addIgnoredException(ForceReattemptException.class.getName());
     try {
-      Set<GatewaySender> senders = cache.getGatewaySenders();
-      AbstractGatewaySender sender = null;
-      for (GatewaySender s : senders) {
-        if (s.getId().equals(senderId)) {
-          sender = (AbstractGatewaySender) s;
-          break;
-        }
-      }
+      AbstractGatewaySender sender = getAbstractGatewaySender(senderId);
       if (sender.isPrimary()) {
         logger.info("Gateway sender is killed by a test");
         cache.getDistributedSystem().disconnect();
@@ -3267,6 +3184,18 @@ public class WANTestBase extends DistributedTestCase {
       exp1.remove();
       exln.remove();
     }
+  }
+
+  private static AbstractGatewaySender getAbstractGatewaySender(String senderId) {
+    Set<GatewaySender> senders = cache.getGatewaySenders();
+    AbstractGatewaySender sender = null;
+    for (GatewaySender s : senders) {
+      if (s.getId().equals(senderId)) {
+        sender = (AbstractGatewaySender) s;
+        break;
+      }
+    }
+    return sender;
   }
 
   public static void killSender() {
@@ -3346,14 +3275,7 @@ public class WANTestBase extends DistributedTestCase {
   public static void checkLocatorsinSender(String senderId, InetSocketAddress locatorToWaitFor)
       throws InterruptedException {
 
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
 
     MyLocatorCallback callback =
         (MyLocatorCallback) ((AbstractGatewaySender) sender).getLocatorDiscoveryCallback();
@@ -3369,14 +3291,7 @@ public class WANTestBase extends DistributedTestCase {
     IgnoredException exp2 =
         IgnoredException.addIgnoredException(GatewaySenderException.class.getName());
     try {
-      Set<GatewaySender> senders = cache.getGatewaySenders();
-      GatewaySender sender = null;
-      for (GatewaySender s : senders) {
-        if (s.getId().equals(senderId)) {
-          sender = s;
-          break;
-        }
-      }
+      GatewaySender sender = getGatewaySender(senderId);
 
       if (!sender.isParallel()) {
         final Set<RegionQueue> queues = ((AbstractGatewaySender) sender).getQueues();
@@ -3404,14 +3319,7 @@ public class WANTestBase extends DistributedTestCase {
 
   // Ensure that the sender's queue(s) have been closed.
   public static void validateQueueClosedForConcurrentSerialGatewaySender(final String senderId) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     final Set<RegionQueue> regionQueue;
     if (sender instanceof AbstractGatewaySender) {
       regionQueue = ((AbstractGatewaySender) sender).getQueues();
@@ -3423,14 +3331,7 @@ public class WANTestBase extends DistributedTestCase {
 
   public static void validateQueueContentsForConcurrentSerialGatewaySender(final String senderId,
       final int regionSize) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     final Set<RegionQueue> regionQueue;
     if (!sender.isParallel()) {
       regionQueue = ((AbstractGatewaySender) sender).getQueues();
@@ -3447,14 +3348,7 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   public static Integer getSecondaryQueueContentSize(final String senderId) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     AbstractGatewaySender abstractSender = (AbstractGatewaySender) sender;
     int size = abstractSender.getSecondaryEventQueueSize();
     return size;
@@ -3504,14 +3398,7 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   public static Integer getQueueContentSize(final String senderId, boolean includeSecondary) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
 
     if (!sender.isParallel()) {
       // if sender is serial, the queues will be all primary or all secondary at one member
@@ -3538,14 +3425,7 @@ public class WANTestBase extends DistributedTestCase {
 
   public static void validateParallelSenderQueueBucketSize(final String senderId,
       final int bucketSize) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     RegionQueue regionQueue =
         ((AbstractGatewaySender) sender).getQueues().toArray(new RegionQueue[1])[0];
     Set<BucketRegion> buckets = ((PartitionedRegion) regionQueue.getRegion()).getDataStore()
@@ -3563,14 +3443,7 @@ public class WANTestBase extends DistributedTestCase {
     IgnoredException exp1 =
         IgnoredException.addIgnoredException(ForceReattemptException.class.getName());
     try {
-      Set<GatewaySender> senders = cache.getGatewaySenders();
-      GatewaySender sender = null;
-      for (GatewaySender s : senders) {
-        if (s.getId().equals(senderId)) {
-          sender = s;
-          break;
-        }
-      }
+      GatewaySender sender = getGatewaySender(senderId);
       final AbstractGatewaySender abstractSender = (AbstractGatewaySender) sender;
       RegionQueue queue = abstractSender.getEventProcessor().queue;
       await().untilAsserted(() -> {
@@ -3595,14 +3468,7 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   public static Integer validateAfterAck(final String senderId) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
 
     final MyGatewayEventFilter_AfterAck filter =
         (MyGatewayEventFilter_AfterAck) sender.getGatewayEventFilters().get(0);
@@ -3610,14 +3476,7 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   public static int verifyAndGetEventsDispatchedByConcurrentDispatchers(final String senderId) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     ConcurrentParallelGatewaySenderEventProcessor cProc =
         (ConcurrentParallelGatewaySenderEventProcessor) ((AbstractGatewaySender) sender)
             .getEventProcessor();
@@ -3633,14 +3492,7 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   public static Long getNumberOfEntriesOverflownToDisk(final String senderId) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
 
     long numEntries = 0;
     if (sender.isParallel()) {
@@ -3653,14 +3505,7 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   public static Long getNumberOfEntriesInVM(final String senderId) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     RegionQueue regionQueue;
     long numEntries = 0;
     if (sender.isParallel()) {
@@ -3671,21 +3516,42 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   public static void verifyTmpDroppedEventSize(String senderId, int size) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
 
     AbstractGatewaySender ags = (AbstractGatewaySender) sender;
     await().untilAsserted(() -> assertEquals("Expected tmpDroppedEvents size: " + size
         + " but actual size: " + ags.getTmpDroppedEventSize(), size, ags.getTmpDroppedEventSize()));
   }
 
-  public static void verifyQueueSize(String senderId, int size) {
+  /**
+   * Checks that the bucketToTempQueueMap for a partitioned region
+   * that holds events for buckets that are not available locally, is empty.
+   */
+  public static void validateEmptyBucketToTempQueueMap(String senderId) {
+    GatewaySender sender = getGatewaySender(senderId);
+
+    int size = 0;
+    Set queues = ((AbstractGatewaySender) sender).getQueues();
+    for (Object queue : queues) {
+      PartitionedRegion region =
+          (PartitionedRegion) ((ConcurrentParallelGatewaySenderQueue) queue).getRegion();
+      int buckets = region.getTotalNumberOfBuckets();
+      for (int bucket = 0; bucket < buckets; bucket++) {
+        BlockingQueue newQueue =
+            ((ConcurrentParallelGatewaySenderQueue) queue).getBucketTmpQueue((int) bucket);
+        if (newQueue != null) {
+          size += newQueue.size();
+        }
+      }
+    }
+
+    final int finalSize = size;
+    assertEquals("Expected elements in TempQueueMap: " + 0
+        + " but actual size: " + finalSize, 0, finalSize);
+
+  }
+
+  private static GatewaySender getGatewaySender(String senderId) {
     Set<GatewaySender> senders = cache.getGatewaySenders();
     GatewaySender sender = null;
     for (GatewaySender s : senders) {
@@ -3694,6 +3560,11 @@ public class WANTestBase extends DistributedTestCase {
         break;
       }
     }
+    return sender;
+  }
+
+  public static void verifyQueueSize(String senderId, int size) {
+    GatewaySender sender = getGatewaySender(senderId);
 
     if (!sender.isParallel()) {
       final Set<RegionQueue> queues = ((AbstractGatewaySender) sender).getQueues();
@@ -3711,14 +3582,7 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   public static void verifyRegionQueueNotEmpty(String senderId) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
 
     if (!sender.isParallel()) {
       final Set<RegionQueue> queues = ((AbstractGatewaySender) sender).getQueues();
@@ -3801,26 +3665,12 @@ public class WANTestBase extends DistributedTestCase {
   }
 
   public static void destroySender(String senderId) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    GatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = s;
-        break;
-      }
-    }
+    GatewaySender sender = getGatewaySender(senderId);
     sender.destroy();
   }
 
   public static void verifySenderDestroyed(String senderId, boolean isParallel) {
-    Set<GatewaySender> senders = cache.getGatewaySenders();
-    AbstractGatewaySender sender = null;
-    for (GatewaySender s : senders) {
-      if (s.getId().equals(senderId)) {
-        sender = (AbstractGatewaySender) s;
-        break;
-      }
-    }
+    AbstractGatewaySender sender = getAbstractGatewaySender(senderId);
     assertNull(sender);
 
     String queueRegionNameSuffix = null;

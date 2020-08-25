@@ -845,6 +845,9 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
                         "The value {} is enqueued to the tempQueue for the BucketRegionQueue.",
                         value);
                   }
+                  logger.info(
+                          "alberto The value {} is enqueued to the tempQueue for the BucketRegionQueue.",
+                          value);
                 }
               }
             }

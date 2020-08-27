@@ -568,10 +568,10 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
 
           logger.info("ParallelGatewaySenderQueue start waiting for bucket recovery.");
 
-        if (!this.cleanQueues) {
-          // Wait for buckets to be recovered.
-          prQ.shadowPRWaitForBucketRecovery();
-        }
+          if (!this.cleanQueues) {
+            // Wait for buckets to be recovered.
+            prQ.shadowPRWaitForBucketRecovery();
+          }
 
         } catch (IOException | ClassNotFoundException veryUnLikely) {
           logger.fatal("Unexpected Exception during init of " +

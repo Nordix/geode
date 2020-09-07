@@ -2317,7 +2317,7 @@ public class DiskStoreImpl implements DiskStore {
       } catch (RuntimeException e) {
         rte = e;
       }
-      if (!isValidating() && !isOfflineCompacting()) {
+      if (!isOffline()) {
         try {
           // do this before write lock
           stopAsyncFlusher();

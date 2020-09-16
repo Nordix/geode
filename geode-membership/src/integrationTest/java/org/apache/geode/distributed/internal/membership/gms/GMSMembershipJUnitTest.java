@@ -18,10 +18,12 @@ import static org.apache.geode.distributed.internal.membership.gms.util.MemberId
 import static org.apache.geode.internal.serialization.DataSerializableFixedID.HIGH_PRIORITY_ACKED_MESSAGE;
 import static org.apache.geode.test.awaitility.GeodeAwaitility.await;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Matchers.isA;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -45,6 +47,7 @@ import org.mockito.Mockito;
 
 import org.apache.geode.distributed.internal.membership.api.Authenticator;
 import org.apache.geode.distributed.internal.membership.api.LifecycleListener;
+import org.apache.geode.distributed.internal.membership.api.MemberDisconnectedException;
 import org.apache.geode.distributed.internal.membership.api.MemberIdentifier;
 import org.apache.geode.distributed.internal.membership.api.MemberShunnedException;
 import org.apache.geode.distributed.internal.membership.api.MemberStartupException;
@@ -59,12 +62,12 @@ import org.apache.geode.distributed.internal.membership.gms.interfaces.HealthMon
 import org.apache.geode.distributed.internal.membership.gms.interfaces.JoinLeave;
 import org.apache.geode.distributed.internal.membership.gms.interfaces.Messenger;
 import org.apache.geode.internal.serialization.DSFIDSerializer;
+import org.apache.geode.internal.serialization.Version;
 import org.apache.geode.internal.serialization.internal.DSFIDSerializerImpl;
 import org.apache.geode.test.junit.categories.MembershipTest;
 
 @Category({MembershipTest.class})
 public class GMSMembershipJUnitTest {
-
   private Services services;
   private MembershipConfig mockConfig;
   private Authenticator authenticator;
@@ -184,8 +187,6 @@ public class GMSMembershipJUnitTest {
       assertEquals(0, failures.size());
     }
   }
-
-
 
   private GMSMembershipView createView(MemberIdentifier creator, int viewId,
       List<MemberIdentifier> members) {
@@ -328,4 +329,36 @@ public class GMSMembershipJUnitTest {
     assertThat(spy.getStartupEvents()).isEmpty();
   }
 
+  @Test
+  public void membershipInvokesUpstreamListenerDuringForcedDisconnect() {
+    // have an exception interrupt the shutdown process and ensure that a thread is
+    // launched to inform the cache of shutdown
+    IllegalStateException expectedException = new IllegalStateException();
+    doThrow(expectedException).when(services).emergencyClose();
+    assertThatThrownBy(() -> manager.uncleanShutdown("For testing",
+        new MemberDisconnectedException("For Testing")))
+            .isEqualTo(expectedException);
+    verify(listener).membershipFailure(isA(String.class), isA(Throwable.class));
+  }
+
+  private MemberIdentifier createSurpriseMember(Version version) {
+    MemberIdentifier surpriseMember = createMemberID(8888 + 5);
+    surpriseMember.setVmViewId(3);
+    surpriseMember.setVersionObjectForTest(version);
+    return surpriseMember;
+  }
+
+  private MembershipView<MemberIdentifier> createMembershipView() {
+    List<MemberIdentifier> viewMembers = createMemberIdentifiers();
+    return new MembershipView<>(myMemberId, 2, viewMembers);
+  }
+
+  private List<MemberIdentifier> createMemberIdentifiers() {
+    List<MemberIdentifier> viewMembers = new ArrayList<>();
+    for (int i = 0; i < 2; ++i) {
+      MemberIdentifier memberIdentifier = createMemberID(8888 + 6 + i);
+      viewMembers.add(memberIdentifier);
+    }
+    return viewMembers;
+  }
 }

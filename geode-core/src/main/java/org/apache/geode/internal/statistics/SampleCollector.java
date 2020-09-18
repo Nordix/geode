@@ -224,11 +224,13 @@ public class SampleCollector {
     List<MarkableSampleHandler> handlers = this.sampleHandlers.currentHandlers();
     if (isDebugEnabled_STATISTICS) {
       logger.trace(LogMarker.STATISTICS_VERBOSE, "SampleCollector#sample handlers={}", handlers);
+      logger.info("toberal SampleCollector#sample handlers={}", handlers);
     }
     sampleResources(handlers);
 
     List<ResourceInstance> updatedResources = new ArrayList<ResourceInstance>();
     for (ResourceInstance ri : this.resourceInstMap.values()) {
+      logger.info("toberal SampleCollector#sample ri={}", ri);
       StatisticDescriptor[] stats = ri.getResourceType().getStatisticDescriptors();
       if (ri.getStatistics().isClosed()) {
         continue;
@@ -266,6 +268,9 @@ public class SampleCollector {
     }
 
     try {
+      logger.info(
+          "toberal SampleCollector#sample notifyAllHadlersOfSample. handle: {}, updatedResources: {}, nanosTimeStamp: {}",
+          handlers, updatedResources, nanosTimeStamp);
       notifyAllHandlersOfSample(handlers, updatedResources, nanosTimeStamp);
     } catch (IllegalArgumentException e) {
       logger.warn(LogMarker.STATISTICS_MARKER,

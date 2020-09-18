@@ -64,12 +64,22 @@ class DisabledEvictionCounters implements EvictionCounters {
   }
 
   @Override
+  public long getAlbertoCounter() {
+    return 0;
+  }
+
+  @Override
   public long getLimit() {
     return 0;
   }
 
   @Override
   public void updateCounter(long delta) {
+    // nothing
+  }
+
+  @Override
+  public void updateAlbertoCounter(long delta) {
     // nothing
   }
 

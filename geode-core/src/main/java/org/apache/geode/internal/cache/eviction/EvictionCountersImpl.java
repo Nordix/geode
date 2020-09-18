@@ -16,9 +16,13 @@ package org.apache.geode.internal.cache.eviction;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.logging.log4j.Logger;
+
 import org.apache.geode.Statistics;
+import org.apache.geode.logging.internal.log4j.api.LogService;
 
 class EvictionCountersImpl implements EvictionCounters {
+  private static final Logger logger = LogService.getLogger();
 
   /** The Statistics object that we delegate most behavior to */
   private final EvictionStats stats;
@@ -28,6 +32,7 @@ class EvictionCountersImpl implements EvictionCounters {
   // In particular they optimize the "get" methods for these items.
   // Striped stats optimize inc but cause set and get to be more expensive.
   private final AtomicLong counter = new AtomicLong();
+  private final AtomicLong albertoCounter = new AtomicLong();
   private final AtomicLong limit = new AtomicLong();
   private final AtomicLong destroys = new AtomicLong();
   private final AtomicLong evictions = new AtomicLong();
@@ -49,6 +54,12 @@ class EvictionCountersImpl implements EvictionCounters {
   }
 
   @Override
+  public long getAlbertoCounter() {
+    return this.albertoCounter.get();
+  }
+
+
+  @Override
   public long getLimit() {
     return this.limit.get();
   }
@@ -58,6 +69,14 @@ class EvictionCountersImpl implements EvictionCounters {
     if (delta != 0) {
       this.counter.getAndAdd(delta);
       this.stats.updateCounter(delta);
+    }
+  }
+
+  @Override
+  public void updateAlbertoCounter(long delta) {
+    if (delta != 0) {
+      this.albertoCounter.getAndAdd(delta);
+      this.stats.updateAlbertoCounter(delta);
     }
   }
 

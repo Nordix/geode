@@ -17,6 +17,8 @@ package org.apache.geode.management.internal.beans.stats;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.logging.log4j.Logger;
+
 import org.apache.geode.StatisticDescriptor;
 import org.apache.geode.Statistics;
 import org.apache.geode.distributed.ConfigurationProperties;
@@ -25,6 +27,7 @@ import org.apache.geode.internal.statistics.StatisticNotFoundException;
 import org.apache.geode.internal.statistics.StatisticsListener;
 import org.apache.geode.internal.statistics.StatisticsNotification;
 import org.apache.geode.internal.statistics.ValueMonitor;
+import org.apache.geode.logging.internal.log4j.api.LogService;
 
 /**
  * This class acts as a monitor and listen for Gateway Sender Overflow statistics updates on
@@ -44,10 +47,13 @@ import org.apache.geode.internal.statistics.ValueMonitor;
  * @see org.apache.geode.management.internal.beans.stats.MBeanStatsMonitor
  */
 public class GatewaySenderOverflowMonitor extends MBeanStatsMonitor {
+  private static final Logger logger = LogService.getLogger();
+
   private volatile long lruEvictions = 0;
   private volatile long bytesOverflowedToDisk = 0;
   private volatile long entriesOverflowedToDisk = 0;
   private volatile long bytesInUse = 0;
+  private volatile long albertoCount = 0;
 
   private final Map<Statistics, ValueMonitor> monitors;
   private final Map<Statistics, StatisticsListener> listeners;
@@ -62,6 +68,10 @@ public class GatewaySenderOverflowMonitor extends MBeanStatsMonitor {
 
   public long getTotalQueueSizeBytesInUse() {
     return bytesInUse;
+  }
+
+  public long getAlbertoCount() {
+    return albertoCount;
   }
 
   public long getEntriesOverflowedToDisk() {
@@ -104,6 +114,11 @@ public class GatewaySenderOverflowMonitor extends MBeanStatsMonitor {
       return currentValue.longValue() - prevValue.longValue();
     }
 
+    if (name.equals(StatsKey.GATEWAYSENDER_ALBERTO_COUNT)) {
+      Number prevValue = statsMap.getOrDefault(StatsKey.GATEWAYSENDER_ALBERTO_COUNT, 0);
+      return currentValue.longValue() - prevValue.longValue();
+    }
+
     return 0;
   }
 
@@ -128,6 +143,12 @@ public class GatewaySenderOverflowMonitor extends MBeanStatsMonitor {
       return;
     }
 
+    if (name.equals(StatsKey.GATEWAYSENDER_ALBERTO_COUNT)) {
+      albertoCount += value.longValue();
+      return;
+    }
+
+
   }
 
   @Override
@@ -146,6 +167,10 @@ public class GatewaySenderOverflowMonitor extends MBeanStatsMonitor {
 
     if (name.equals(StatsKey.GATEWAYSENDER_BYTES_IN_MEMORY)) {
       return getTotalQueueSizeBytesInUse();
+    }
+
+    if (name.equals(StatsKey.GATEWAYSENDER_ALBERTO_COUNT)) {
+      return getAlbertoCount();
     }
 
     return 0;
@@ -197,6 +222,7 @@ public class GatewaySenderOverflowMonitor extends MBeanStatsMonitor {
           log(name, value);
           Number deltaValue = computeDelta(statsMap, name, value);
           statsMap.put(name, value);
+          logger.info("toberal increaseStats. name: {}, deltaValue: {}", name, deltaValue);
           increaseStats(name, deltaValue);
         }
       }

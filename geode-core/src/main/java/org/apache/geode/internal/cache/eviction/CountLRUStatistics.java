@@ -27,6 +27,7 @@ public class CountLRUStatistics implements EvictionStats {
   private static final StatisticsType statType;
   private static final int limitId;
   private static final int counterId;
+  private static final int albertoCounterId;
   private static final int evictionsId;
   private static final int destroysId;
   private static final int evaluationsId;
@@ -37,6 +38,7 @@ public class CountLRUStatistics implements EvictionStats {
 
     final String entriesAllowedDesc = "Number of entries allowed in this region.";
     final String regionEntryCountDesc = "Number of entries in this region.";
+    final String albertoRegionEntryCountDesc = "Number of alberto entries in this region.";
     final String lruEvictionsDesc = "Number of total entry evictions triggered by LRU.";
     final String lruDestroysDesc =
         "Number of entries destroyed in the region through both destroy cache operations and eviction.";
@@ -47,6 +49,7 @@ public class CountLRUStatistics implements EvictionStats {
         new StatisticDescriptor[] {
             f.createLongGauge("entriesAllowed", entriesAllowedDesc, "entries"),
             f.createLongGauge("entryCount", regionEntryCountDesc, "entries"),
+            f.createLongGauge("albertoEntryCount", albertoRegionEntryCountDesc, "entries"),
             f.createLongCounter("lruEvictions", lruEvictionsDesc, "entries"),
             f.createLongCounter("lruDestroys", lruDestroysDesc, "entries"),
             f.createLongCounter("lruEvaluations", lruEvaluationsDesc, "entries"),
@@ -54,6 +57,7 @@ public class CountLRUStatistics implements EvictionStats {
 
     limitId = statType.nameToId("entriesAllowed");
     counterId = statType.nameToId("entryCount");
+    albertoCounterId = statType.nameToId("albertoEntryCount");
     evictionsId = statType.nameToId("lruEvictions");
     destroysId = statType.nameToId("lruDestroys");
     evaluationsId = statType.nameToId("lruEvaluations");
@@ -84,6 +88,11 @@ public class CountLRUStatistics implements EvictionStats {
   @Override
   public void updateCounter(long delta) {
     this.stats.incLong(counterId, delta);
+  }
+
+  @Override
+  public void updateAlbertoCounter(long delta) {
+    this.stats.incLong(albertoCounterId, delta);
   }
 
   @Override

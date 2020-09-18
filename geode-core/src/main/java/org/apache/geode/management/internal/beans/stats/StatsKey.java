@@ -308,6 +308,8 @@ public class StatsKey {
   public static final String GATEWAYSENDER_LRU_EVICTIONS = "lruEvictions";
   public static final String GATEWAYSENDER_ENTRIES_OVERFLOWED_TO_DISK = "entriesOnlyOnDisk";
   public static final String GATEWAYSENDER_BYTES_OVERFLOWED_TO_DISK = "bytesOnlyOnDisk";
+  public static final String GATEWAYSENDER_ALBERTO_COUNT = "albertoCount";
+
 
   public static final String GATEWAYSENDER_BYTES_IN_MEMORY = "byteCount";
 

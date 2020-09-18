@@ -22,6 +22,8 @@ public interface EvictionStats {
 
   void updateCounter(long delta);
 
+  void updateAlbertoCounter(long delta);
+
   Statistics getStatistics();
 
   void incDestroys();

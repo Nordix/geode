@@ -27,6 +27,7 @@ public class MemoryLRUStatistics implements EvictionStats {
   private static final StatisticsType statType;
   private static final int limitId;
   private static final int counterId;
+  private static final int albertoCounterId;
   private static final int evictionsId;
   private static final int destroysId;
   private static final int evaluationsId;
@@ -37,6 +38,7 @@ public class MemoryLRUStatistics implements EvictionStats {
 
     final String bytesAllowedDesc = "Number of total bytes allowed in this region.";
     final String byteCountDesc = "Number of bytes in region.";
+    final String albertoCountDesc = "Number of alberto bytes in region.";
     final String lruEvictionsDesc = "Number of total entry evictions triggered by LRU.";
     final String lruDestroysDesc =
         "Number of entries destroyed in the region through both destroy cache operations and eviction.";
@@ -46,6 +48,7 @@ public class MemoryLRUStatistics implements EvictionStats {
     statType = f.createType("MemLRUStatistics", "Statistics relates to memory based eviction",
         new StatisticDescriptor[] {f.createLongGauge("bytesAllowed", bytesAllowedDesc, "bytes"),
             f.createLongGauge("byteCount", byteCountDesc, "bytes"),
+            f.createLongGauge("albertoCount", byteCountDesc, "bytes"),
             f.createLongCounter("lruEvictions", lruEvictionsDesc, "entries"),
             f.createLongCounter("lruDestroys", lruDestroysDesc, "entries"),
             f.createLongCounter("lruEvaluations", lruEvaluationsDesc, "entries"),
@@ -53,6 +56,7 @@ public class MemoryLRUStatistics implements EvictionStats {
 
     limitId = statType.nameToId("bytesAllowed");
     counterId = statType.nameToId("byteCount");
+    albertoCounterId = statType.nameToId("albertoCount");
     evictionsId = statType.nameToId("lruEvictions");
     destroysId = statType.nameToId("lruDestroys");
     evaluationsId = statType.nameToId("lruEvaluations");
@@ -83,6 +87,11 @@ public class MemoryLRUStatistics implements EvictionStats {
   @Override
   public void updateCounter(long delta) {
     this.stats.incLong(counterId, delta);
+  }
+
+  @Override
+  public void updateAlbertoCounter(long delta) {
+    this.stats.incLong(albertoCounterId, delta);
   }
 
   @Override

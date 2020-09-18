@@ -181,6 +181,8 @@ public interface GatewaySenderMXBean {
    */
   long getTotalQueueSizeBytesInUse();
 
+  long getAlbertoCount();
+
   /**
    * Starts this GatewaySender. Once the GatewaySender is running its configuration cannot be
    * changed.

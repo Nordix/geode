@@ -2040,6 +2040,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   void updateCounter(long delta) {
+    logger.info("toberal calling BucketRegion.updateCounter(). delta: {}", delta);
     if (delta != 0) {
       counter.getAndAdd(delta);
     }

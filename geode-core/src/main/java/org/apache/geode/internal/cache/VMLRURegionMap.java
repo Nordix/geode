@@ -285,8 +285,10 @@ public class VMLRURegionMap extends AbstractRegionMap {
           BucketRegion bucketRegion = (BucketRegion) _getOwner();
           bucketRegion.updateCounter(change);
           stats.updateCounter(change);
+          stats.updateAlbertoCounter(change * 2);
         } else {
           stats.updateCounter(change);
+          stats.updateAlbertoCounter(change * 2);
         }
 
       } else {
@@ -317,6 +319,7 @@ public class VMLRURegionMap extends AbstractRegionMap {
       }
     }
     getEvictionList().getStatistics().updateCounter(delta);
+    getEvictionList().getStatistics().updateAlbertoCounter(delta * 2);
 
     if (delta > 0) {
       if (logger.isTraceEnabled(LogMarker.LRU_VERBOSE)) {

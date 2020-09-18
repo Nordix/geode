@@ -296,6 +296,11 @@ public class GatewaySenderMBeanBridge {
         .longValue();
   }
 
+  public long getAlbertoCount() {
+    return overflowMonitor.getStatistic(StatsKey.GATEWAYSENDER_ALBERTO_COUNT)
+        .longValue();
+  }
+
 
   private Number getStatistic(String statName) {
     if (monitor != null) {
@@ -340,4 +345,5 @@ public class GatewaySenderMBeanBridge {
   public int getEventsExceedingAlertThreshold() {
     return getStatistic(StatsKey.GATEWAYSENDER_EVENTS_EXCEEDING_ALERT_THRESHOLD).intValue();
   }
+
 }

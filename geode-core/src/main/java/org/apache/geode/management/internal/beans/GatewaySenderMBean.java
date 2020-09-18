@@ -138,6 +138,10 @@ public class GatewaySenderMBean extends NotificationBroadcasterSupport
     return bridge.getTotalQueueSizeBytesInUse();
   }
 
+  public long getAlbertoCount() {
+    return bridge.getAlbertoCount();
+  }
+
   @Override
   public boolean isBatchConflationEnabled() {
     return bridge.isBatchConflationEnabled();

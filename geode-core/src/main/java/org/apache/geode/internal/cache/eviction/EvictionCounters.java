@@ -20,9 +20,13 @@ public interface EvictionCounters {
 
   long getCounter();
 
+  long getAlbertoCounter();
+
   void decrementCounter(long delta);
 
   void updateCounter(long delta);
+
+  void updateAlbertoCounter(long delta);
 
   void resetCounter();
 

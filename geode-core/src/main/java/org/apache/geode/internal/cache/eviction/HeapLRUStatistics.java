@@ -26,6 +26,7 @@ public class HeapLRUStatistics implements EvictionStats {
   @Immutable
   private static final StatisticsType statType;
   private static final int counterId;
+  private static final int albertoCounterId;
   private static final int evictionsId;
   private static final int destroysId;
   private static final int evaluationsId;
@@ -36,6 +37,8 @@ public class HeapLRUStatistics implements EvictionStats {
 
     final String entryBytesDesc =
         "The amount of memory currently used by regions configured for eviction.";
+    final String albertoEntryBytesDesc =
+        "The amount of alberto memory currently used by regions configured for eviction.";
     final String lruEvictionsDesc = "Number of total entry evictions triggered by LRU.";
     final String lruDestroysDesc =
         "Number of entries destroyed in the region through both destroy cache operations and eviction.";
@@ -44,12 +47,14 @@ public class HeapLRUStatistics implements EvictionStats {
 
     statType = f.createType("HeapLRUStatistics", "Statistics related to heap based eviction",
         new StatisticDescriptor[] {f.createLongGauge("entryBytes", entryBytesDesc, "bytes"),
+            f.createLongGauge("albertoEntryBytes", albertoEntryBytesDesc, "bytes"),
             f.createLongCounter("lruEvictions", lruEvictionsDesc, "entries"),
             f.createLongCounter("lruDestroys", lruDestroysDesc, "entries"),
             f.createLongCounter("lruEvaluations", lruEvaluationsDesc, "entries"),
             f.createLongCounter("lruGreedyReturns", lruGreedyReturnsDesc, "entries")});
 
     counterId = statType.nameToId("entryBytes");
+    albertoCounterId = statType.nameToId("albertoEntryBytes");
     evictionsId = statType.nameToId("lruEvictions");
     destroysId = statType.nameToId("lruDestroys");
     evaluationsId = statType.nameToId("lruEvaluations");
@@ -80,6 +85,11 @@ public class HeapLRUStatistics implements EvictionStats {
   @Override
   public void updateCounter(long delta) {
     this.stats.incLong(counterId, delta);
+  }
+
+  @Override
+  public void updateAlbertoCounter(long delta) {
+    this.stats.incLong(albertoCounterId, delta);
   }
 
   @Override

@@ -46,7 +46,6 @@ public class ChangeProductVersionDistributedTest implements Serializable {
         VersionManager.getInstance().getVersionsWithoutCurrent().stream()
             .map(TestVersion::valueOf)
             .collect(Collectors.partitioningBy(v -> v.lessThan(NEW_PRODUCT_VERSION)));
-
     final List<TestVersion> olderVersions = groups.get(true);
 
     if (olderVersions.size() < 1) {
@@ -54,6 +53,9 @@ public class ChangeProductVersionDistributedTest implements Serializable {
           "Failed to find old version to test with. Current version is: " + NEW_PRODUCT_VERSION);
     }
 
+    for (TestVersion testVersion : olderVersions) {
+      System.out.println("testVersions = " + testVersion.toString());
+    }
     return olderVersions.get(olderVersions.size() - 1);
   }
 

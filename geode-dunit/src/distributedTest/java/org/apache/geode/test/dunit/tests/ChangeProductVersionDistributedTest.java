@@ -53,9 +53,6 @@ public class ChangeProductVersionDistributedTest implements Serializable {
           "Failed to find old version to test with. Current version is: " + NEW_PRODUCT_VERSION);
     }
 
-    for (TestVersion testVersion : olderVersions) {
-      System.out.println("testVersions = " + testVersion.toString());
-    }
     return olderVersions.get(olderVersions.size() - 1);
   }
 

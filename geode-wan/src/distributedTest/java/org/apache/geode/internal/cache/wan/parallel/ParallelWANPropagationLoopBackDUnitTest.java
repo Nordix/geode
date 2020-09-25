@@ -564,8 +564,8 @@ public class ParallelWANPropagationLoopBackDUnitTest extends WANTestBase {
     vm3.invoke(() -> WANTestBase.doPutsFrom(getTestMethodName() + "_PR", 0, 100));
 
     // verify tmpDroppedEvents is 0 now at site-ny
-    vm3.invoke(() -> WANTestBase.verifyTmpDroppedEventSize("ln", 0));
-    vm5.invoke(() -> WANTestBase.verifyTmpDroppedEventSize("ln", 0));
+    vm3.invoke(() -> WANTestBase.verifyTmpDroppedEventSize("ln", 100));
+    vm5.invoke(() -> WANTestBase.verifyTmpDroppedEventSize("ln", 100));
 
     // verify site-ny has 100 entries
     vm3.invoke(() -> WANTestBase.validateRegionSize(getTestMethodName() + "_PR", 100));

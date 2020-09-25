@@ -258,9 +258,6 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
     this.isPersistence = attrs.isPersistenceEnabled();
     this.alertThreshold = attrs.getAlertThreshold();
     this.manualStart = attrs.isManualStart();
-    if (manualStart) {
-      mustQueueDroppedEvents = false;
-    }
     this.isParallel = attrs.isParallel();
     this.groupTransactionEvents = attrs.mustGroupTransactionEvents();
     this.isForInternalUse = attrs.isForInternalUse();
@@ -918,6 +915,9 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
 
   @Override
   public boolean mustQueueDroppedEvents() {
+    if (eventProcessor == null) {
+      mustQueueDroppedEvents = false;
+    }
     return mustQueueDroppedEvents;
   }
 

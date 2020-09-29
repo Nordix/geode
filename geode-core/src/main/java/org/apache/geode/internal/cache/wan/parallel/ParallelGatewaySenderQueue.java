@@ -341,6 +341,12 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
       InternalCache cache = sender.getCache();
       final String prQName = getQueueName(sender.getId(), userRegion.getFullPath());
       prQ = (PartitionedRegion) cache.getRegion(prQName);
+
+      if ((prQ != null) && (this.index == 0) && this.cleanQueues) {
+        prQ.destroyRegion(null);
+        prQ = null;
+      }
+
       if (prQ == null) {
         // TODO:REF:Avoid deprecated apis
         AttributesFactory fact = new AttributesFactory();
@@ -565,9 +571,10 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
 
           logger.info("ParallelGatewaySenderQueue start waiting for bucket recovery.");
 
-          // Wait for buckets to be recovered.
-          prQ.shadowPRWaitForBucketRecovery();
-
+          if (!this.cleanQueues) {
+            // Wait for buckets to be recovered.
+            prQ.shadowPRWaitForBucketRecovery();
+          }
 
         } catch (IOException | ClassNotFoundException veryUnLikely) {
           logger.fatal("Unexpected Exception during init of " +
@@ -577,15 +584,6 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
         if (logger.isDebugEnabled()) {
           logger.debug("{}: Created queue region: {}", this, prQ);
         }
-        if ((prQ != null) && this.cleanQueues) {
-          // now, clean up the shadowPR's buckets on this node (primary as well as
-          // secondary) for a fresh start
-          Set<BucketRegion> localBucketRegions = prQ.getDataStore().getAllLocalBucketRegions();
-          for (BucketRegion bucketRegion : localBucketRegions) {
-            bucketRegion.clear();
-          }
-        }
-
       } else {
         if (isAccessor)
           return; // return from here if accessor node
@@ -652,15 +650,6 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: No need to create the region as the region has been retrieved: {}", this,
           prQ);
-    }
-    // now, clean up the shadowPR's buckets on this node (primary as well as
-    // secondary) for a fresh start
-    if (this.cleanQueues) {
-      logger.info("ParallelGatewaySenderQueue start cleanQueues.");
-      Set<BucketRegion> localBucketRegions = prQ.getDataStore().getAllLocalBucketRegions();
-      for (BucketRegion bucketRegion : localBucketRegions) {
-        bucketRegion.clear();
-      }
     }
   }
 

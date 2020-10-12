@@ -802,7 +802,7 @@ public class SocketCreator extends TcpSocketCreatorImpl {
       // will compare against the subject alternative addresses in the server's certificate. Here
       // we attempt to get a hostname instead of the proffered numeric address
       try {
-        hostName = InetAddress.getByName(hostName).getCanonicalHostName();
+        hostName = InetAddress.getByName(hostName).getHostName();
       } catch (UnknownHostException e) {
         // ignore - we'll see what happens with endpoint validation using a numeric address...
       }

@@ -796,16 +796,13 @@ public class SocketCreator extends TcpSocketCreatorImpl {
     }
 
     String hostName = addr.getHostName();
-    logger.info("emakevo: hostName = " + hostName);
     if (this.sslConfig.doEndpointIdentification()
         && InetAddressValidator.getInstance().isValid(hostName)) {
       // endpoint validation typically uses a hostname in the sniServer parameter that the handshake
       // will compare against the subject alternative addresses in the server's certificate. Here
       // we attempt to get a hostname instead of the proffered numeric address
-      logger.info("emakevo: if statement");
       try {
         hostName = InetAddress.getByName(hostName).getHostName();
-        logger.info("emakevo: hostName in if statement = " + hostName);
       } catch (UnknownHostException e) {
         // ignore - we'll see what happens with endpoint validation using a numeric address...
       }

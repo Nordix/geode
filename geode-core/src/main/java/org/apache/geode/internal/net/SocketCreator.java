@@ -62,7 +62,6 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509ExtendedKeyManager;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.validator.routines.InetAddressValidator;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.GemFireConfigException;
@@ -546,15 +545,7 @@ public class SocketCreator extends TcpSocketCreatorImpl {
    * Returns an SSLEngine that can be used to perform TLS handshakes and communication
    */
   public SSLEngine createSSLEngine(String hostName, int port) {
-    SSLEngine engine = getSslContext().createSSLEngine(hostName, port);
-    if (sslConfig.doEndpointIdentification()) {
-      // set server-names so that endpoint identification algorithms can find what's expected
-      SSLParameters parameters = engine.getSSLParameters();
-      if (setServerNames(parameters, new HostAndPort(hostName, port))) {
-        engine.setSSLParameters(parameters);
-      }
-    }
-    return engine;
+    return getSslContext().createSSLEngine(hostName, port);
   }
 
   /**
@@ -780,10 +771,8 @@ public class SocketCreator extends TcpSocketCreatorImpl {
     }
   }
 
-  /**
-   * returns true if the SSLParameters are altered, false if not
-   */
-  private boolean setServerNames(SSLParameters modifiedParams, HostAndPort addr) {
+
+  private void setServerNames(SSLParameters modifiedParams, HostAndPort addr) {
     List<SNIServerName> oldNames = modifiedParams.getServerNames();
     oldNames = oldNames == null ? Collections.emptyList() : oldNames;
     final List<SNIServerName> serverNames = new ArrayList<>(oldNames);
@@ -792,24 +781,11 @@ public class SocketCreator extends TcpSocketCreatorImpl {
         .mapToInt(SNIServerName::getType)
         .anyMatch(type -> type == StandardConstants.SNI_HOST_NAME)) {
       // we already have a SNI hostname set. Do nothing.
-      return false;
+      return;
     }
 
-    String hostName = addr.getHostName();
-    if (this.sslConfig.doEndpointIdentification()
-        && InetAddressValidator.getInstance().isValid(hostName)) {
-      // endpoint validation typically uses a hostname in the sniServer parameter that the handshake
-      // will compare against the subject alternative addresses in the server's certificate. Here
-      // we attempt to get a hostname instead of the proffered numeric address
-      try {
-        hostName = InetAddress.getByName(hostName).getHostName();
-      } catch (UnknownHostException e) {
-        // ignore - we'll see what happens with endpoint validation using a numeric address...
-      }
-    }
-    serverNames.add(new SNIHostName(hostName));
+    serverNames.add(new SNIHostName(addr.getHostName()));
     modifiedParams.setServerNames(serverNames);
-    return true;
   }
 
   /**

@@ -72,6 +72,14 @@ public class ExecuteCQ extends BaseCQCommand {
     Part isDurablePart = clientMessage.getPart(3);
     byte[] isDurableByte = isDurablePart.getSerializedForm();
     boolean isDurable = !(isDurableByte == null || isDurableByte[0] == 0);
+
+    boolean suppressUpdate = false;
+    if (clientMessage.getNumberOfParts() > 5) {
+      Part suppressUpdatePart = clientMessage.getPart(clientMessage.getNumberOfParts() - 1);
+      byte[] suppressUpdateByte = suppressUpdatePart.getSerializedForm();
+      suppressUpdate = !(suppressUpdateByte == null || suppressUpdateByte[0] == 0);
+    }
+
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Received {} request from {} CqName: {} queryString: {}",
           serverConnection.getName(), MessageType.getString(clientMessage.getMessageType()),
@@ -108,7 +116,7 @@ public class ExecuteCQ extends BaseCQCommand {
 
       cqServiceForExec = qService.getCqService();
       cqQuery = cqServiceForExec.executeCq(cqName, cqQueryString, cqState, id,
-          acceptor.getCacheClientNotifier(), isDurable, false, 0, null);
+          acceptor.getCacheClientNotifier(), isDurable, false, 0, null, suppressUpdate);
     } catch (CqException cqe) {
       sendCqResponse(MessageType.CQ_EXCEPTION_TYPE, "", clientMessage.getTransactionId(), cqe,
           serverConnection);

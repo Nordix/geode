@@ -52,7 +52,7 @@ public class Version extends VersionOrdinalImpl {
   private final byte release;
   private final byte patch;
 
-  public static final int HIGHEST_VERSION = 121;
+  public static final int HIGHEST_VERSION = 122;
 
   @Immutable
   private static final Version[] VALUES = new Version[HIGHEST_VERSION + 1];
@@ -292,6 +292,13 @@ public class Version extends VersionOrdinalImpl {
       new Version("ERICSSONGEODE", "1.13.0.1", (byte) 1, (byte) 13, (byte) 0, (byte) 1,
           ERICSSONGEODE_1_13_0_1_ORDINAL);
 
+  private static final short ERICSSONGEODE_1_13_0_6_ORDINAL = 122;
+
+  @Immutable
+  public static final Version ERICSSONGEODE_1_13_0_6 =
+      new Version("ERICSSONGEODE", "1.13.0.6", (byte) 1, (byte) 13, (byte) 0, (byte) 6,
+          ERICSSONGEODE_1_13_0_6_ORDINAL);
+
   /* NOTE: when adding a new version bump the ordinal by 5. Ordinals can be short ints */
 
   /**
@@ -299,7 +306,7 @@ public class Version extends VersionOrdinalImpl {
    * HIGHEST_VERSION when changing CURRENT !!!
    */
   @Immutable
-  public static final Version CURRENT = ERICSSONGEODE_1_13_0_1;
+  public static final Version CURRENT = ERICSSONGEODE_1_13_0_6;
 
   /**
    * A lot of versioning code needs access to the current version's ordinal

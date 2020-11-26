@@ -46,7 +46,8 @@ public class ServerCQImplTest {
     when(mockCqService.getCache().getSecurityLoggerI18n())
         .thenReturn(mock(InternalLogWriter.class));
     serverCq = spy(
-        new ServerCQImpl(mockCqService, "cqName", "SELECT * FROM /region", false, "test"));
+        new ServerCQImpl(mockCqService, "cqName", "SELECT * FROM /region", false,
+            "test", false));
   }
 
   @Test

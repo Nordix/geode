@@ -46,6 +46,7 @@ public class VersionJUnitTest {
     compare(Version.GEODE_1_12_0, Version.GEODE_1_11_0);
     compare(Version.ERICSSONGEODE_1_12_0_4, Version.GEODE_1_12_0);
     compare(Version.ERICSSONGEODE_1_13_0_1, Version.ERICSSONGEODE_1_12_0_4);
+    compare(Version.ERICSSONGEODE_1_13_0_6, Version.ERICSSONGEODE_1_13_0_1);
   }
 
   private void compare(Version later, Version earlier) {

@@ -1260,7 +1260,6 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
     addPeekedEvents(batch, batchSize == BATCH_BASED_ON_TIME_ONLY ? DEFAULT_BATCH_SIZE : batchSize);
 
     int bId;
-    Map<TransactionId, Integer> incompleteTransactionsInBatch = new HashMap<>();
     while (batchSize == BATCH_BASED_ON_TIME_ONLY || batch.size() < batchSize) {
       if (areLocalBucketQueueRegionsPresent() && ((bId = getRandomPrimaryBucket(prQ)) != -1)) {
         GatewaySenderEventImpl object = (GatewaySenderEventImpl) peekAhead(prQ, bId);
@@ -1280,13 +1279,6 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
             logger.debug("The gatewayEventImpl in peek is {}", object);
           }
           batch.add(object);
-          if (object.getTransactionId() != null) {
-            if (object.isLastEventInTransaction()) {
-              incompleteTransactionsInBatch.remove(object.getTransactionId());
-            } else {
-              incompleteTransactionsInBatch.put(object.getTransactionId(), bId);
-            }
-          }
           peekedEvents.add(object);
 
         } else {
@@ -1316,7 +1308,7 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
     }
 
     if (batch.size() > 0) {
-      peekEventsFromIncompleteTransactions(batch, incompleteTransactionsInBatch, prQ);
+      peekEventsFromIncompleteTransactions(batch, prQ);
     }
 
     if (isDebugEnabled) {
@@ -1351,11 +1343,13 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
   }
 
   private void peekEventsFromIncompleteTransactions(List<GatewaySenderEventImpl> batch,
-      Map<TransactionId, Integer> incompleteTransactionIdsInBatch, PartitionedRegion prQ) {
+      PartitionedRegion prQ) {
     if (!mustGroupTransactionEvents()) {
       return;
     }
 
+    Map<TransactionId, Integer> incompleteTransactionIdsInBatch =
+        getIncompleteTransactionsInBatch(batch);
     if (areAllTransactionsCompleteInBatch(incompleteTransactionIdsInBatch)) {
       return;
     }
@@ -1387,6 +1381,21 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
             transactionId, retries);
       }
     }
+  }
+
+  private Map<TransactionId, Integer> getIncompleteTransactionsInBatch(List batch) {
+    Map<TransactionId, Integer> incompleteTransactionsInBatch = new HashMap<>();
+    for (Object object : batch) {
+      GatewaySenderEventImpl event = (GatewaySenderEventImpl) object;
+      if (event.getTransactionId() != null) {
+        if (event.isLastEventInTransaction()) {
+          incompleteTransactionsInBatch.remove(event.getTransactionId());
+        } else {
+          incompleteTransactionsInBatch.put(event.getTransactionId(), event.getBucketId());
+        }
+      }
+    }
+    return incompleteTransactionsInBatch;
   }
 
   private boolean areAllTransactionsCompleteInBatch(Map incompleteTransactions) {
@@ -1543,7 +1552,7 @@ public class ParallelGatewaySenderQueue implements RegionQueue {
 
     try {
       Predicate<GatewaySenderEventImpl> hasTransactionIdPredicate =
-          x -> x.getTransactionId().equals(transactionId);
+          x -> transactionId.equals(x.getTransactionId());
       Predicate<GatewaySenderEventImpl> isLastEventInTransactionPredicate =
           x -> x.isLastEventInTransaction();
       objects =

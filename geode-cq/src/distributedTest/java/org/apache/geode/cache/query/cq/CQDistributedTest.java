@@ -269,7 +269,7 @@ public class CQDistributedTest implements Serializable {
 
   @Test
   public void cqEventsCreatUpdate_suppressUpdate_false() throws Exception {
-    qs.newCq("Select * from " + SEPARATOR + "region r where r.ID > 1", cqa, false, false).execute();
+    qs.newCq("Select * from /region r where r.ID > 1", cqa, false, false).execute();
 
     server.invoke(() -> {
       Region regionOnServer = ClusterStartupRule.getCache().getRegion("region");
@@ -292,7 +292,7 @@ public class CQDistributedTest implements Serializable {
 
   @Test
   public void cqEventsCreatUpdate_suppressUpdate_true() throws Exception {
-    qs.newCq("Select * from " + SEPARATOR + "region r where r.ID > 1", cqa, false, true).execute();
+    qs.newCq("Select * from /region r where r.ID > 1", cqa, false, true).execute();
 
     server.invoke(() -> {
       Region regionOnServer = ClusterStartupRule.getCache().getRegion("region");
@@ -319,7 +319,7 @@ public class CQDistributedTest implements Serializable {
     server.invoke(() -> {
       Region regionOnServer = ClusterStartupRule.getCache().getRegion("region");
       ClusterStartupRule.getCache().getQueryService().createKeyIndex("PrimaryKeyIndex", "ID",
-          SEPARATOR + "region");
+          "/region");
       regionOnServer.put(0, new Portfolio(0));
       regionOnServer.put(1, new Portfolio(1));
       regionOnServer.put(2, new Portfolio(2));
@@ -329,7 +329,7 @@ public class CQDistributedTest implements Serializable {
     });
 
     SelectResults results =
-        qs.newCq("Select * from " + SEPARATOR + "region where ID = 1", cqa, false, false)
+        qs.newCq("Select * from /region where ID = 1", cqa, false, false)
             .executeWithInitialResults();
     assertEquals(1, results.size());
 
@@ -358,7 +358,7 @@ public class CQDistributedTest implements Serializable {
     server.invoke(() -> {
       Region regionOnServer = ClusterStartupRule.getCache().getRegion("region");
       ClusterStartupRule.getCache().getQueryService().createKeyIndex("PrimaryKeyIndex", "ID",
-          SEPARATOR + "region");
+          "/region");
       regionOnServer.put(0, new Portfolio(0));
       regionOnServer.put(1, new Portfolio(1));
       regionOnServer.put(2, new Portfolio(2));
@@ -367,7 +367,7 @@ public class CQDistributedTest implements Serializable {
     });
 
     SelectResults results =
-        qs.newCq("Select * from " + SEPARATOR + "region where ID = 1", cqa, false, true)
+        qs.newCq("Select * from /region where ID = 1", cqa, false, true)
             .executeWithInitialResults();
     assertEquals(1, results.size());
 

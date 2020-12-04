@@ -59,6 +59,8 @@ import org.apache.geode.test.junit.categories.ClientSubscriptionTest;
 @Category({ClientSubscriptionTest.class})
 public class DurableClientCQDUnitTest extends DurableClientTestBase {
 
+  public static final String SEPARATOR = "/";
+
   /**
    * Test functionality to close the cq and drain all events from the ha queue from the server
    */

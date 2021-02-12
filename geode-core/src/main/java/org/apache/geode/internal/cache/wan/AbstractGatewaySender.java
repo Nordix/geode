@@ -49,6 +49,7 @@ import org.apache.geode.cache.wan.GatewayEventFilter;
 import org.apache.geode.cache.wan.GatewayEventSubstitutionFilter;
 import org.apache.geode.cache.wan.GatewayQueueEvent;
 import org.apache.geode.cache.wan.GatewaySender;
+import org.apache.geode.cache.wan.GatewaySenderState;
 import org.apache.geode.cache.wan.GatewayTransportFilter;
 import org.apache.geode.distributed.GatewayCancelledException;
 import org.apache.geode.distributed.internal.DistributionAdvisee;
@@ -153,6 +154,8 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
   protected GatewaySenderAdvisor senderAdvisor;
 
   private int serialNumber;
+
+  protected GatewaySenderState state;
 
   protected GatewaySenderStats statistics;
 
@@ -292,6 +295,7 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
     }
     this.isBucketSorted = attrs.isBucketSorted();
     this.forwardExpirationDestroy = attrs.isForwardExpirationDestroy();
+    this.state = attrs.getState();
   }
 
   public GatewaySenderAdvisor getSenderAdvisor() {
@@ -410,6 +414,11 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
   @Override
   public int getSocketReadTimeout() {
     return this.socketReadTimeout;
+  }
+
+  @Override
+  public GatewaySenderState getState() {
+    return this.state;
   }
 
   @Override
@@ -570,6 +579,9 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
 
   @Override
   public abstract void start();
+
+  @Override
+  public abstract void recoverInStoppedState();
 
   @Override
   public abstract void startWithCleanQueue();
@@ -883,8 +895,8 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
   }
 
   @Override
-  public void setStartEventProcessorInPausedState() {
-    startEventProcessorInPausedState = true;
+  public void setStartEventProcessorInPausedState(boolean isPaused) {
+    startEventProcessorInPausedState = isPaused;
   }
 
   /**
@@ -1022,7 +1034,7 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
       }
 
       // this filter is defined by Asif which exist in old wan too. new wan has
-      // other GatewaEventFilter. Do we need to get rid of this filter. Cheetah is
+      // other GatewayEventFilter. Do we need to get rid of this filter. Cheetah is
       // not considering this filter
       if (!this.filter.enqueueEvent(event)) {
         stats.incEventsFiltered();

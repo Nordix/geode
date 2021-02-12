@@ -31,7 +31,7 @@ public class RemoteConcurrentSerialGatewaySenderEventProcessor
   }
 
   @Override
-  protected void initializeMessageQueue(String id, boolean cleanQueues) {
+  protected void initializeMessageQueue(String id, boolean cleanQueues, boolean isStopped) {
     for (int i = 0; i < sender.getDispatcherThreads(); i++) {
       processors.add(new RemoteSerialGatewaySenderEventProcessor(this.sender, id + "." + i,
           getThreadMonitorObj(), cleanQueues));

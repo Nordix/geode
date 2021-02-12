@@ -23,6 +23,7 @@ import org.apache.geode.cache.wan.GatewayEventFilter;
 import org.apache.geode.cache.wan.GatewayEventSubstitutionFilter;
 import org.apache.geode.cache.wan.GatewaySender;
 import org.apache.geode.cache.wan.GatewaySender.OrderPolicy;
+import org.apache.geode.cache.wan.GatewaySenderState;
 import org.apache.geode.cache.wan.GatewayTransportFilter;
 
 public class GatewaySenderAttributes {
@@ -42,6 +43,8 @@ public class GatewaySenderAttributes {
   public int batchTimeInterval = GatewaySender.DEFAULT_BATCH_TIME_INTERVAL;
 
   public boolean isBatchConflationEnabled = GatewaySender.DEFAULT_BATCH_CONFLATION;
+
+  public GatewaySenderState state;
 
   public boolean isPersistenceEnabled = GatewaySender.DEFAULT_PERSISTENCE_ENABLED;
 
@@ -195,6 +198,10 @@ public class GatewaySenderAttributes {
 
   public GatewayEventSubstitutionFilter getGatewayEventSubstitutionFilter() {
     return this.eventSubstitutionFilter;
+  }
+
+  public GatewaySenderState getState() {
+    return this.state;
   }
 
   public boolean isMetaQueue() {

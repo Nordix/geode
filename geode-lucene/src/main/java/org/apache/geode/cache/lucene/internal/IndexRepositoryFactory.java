@@ -82,6 +82,7 @@ public class IndexRepositoryFactory {
     BucketRegion fileAndChunkBucket = getMatchingBucket(fileRegion, bucketId);
     BucketRegion dataBucket = getMatchingBucket(userRegion, bucketId);
     boolean success = false;
+
     if (fileAndChunkBucket == null) {
       if (oldRepository != null) {
         oldRepository.cleanup();

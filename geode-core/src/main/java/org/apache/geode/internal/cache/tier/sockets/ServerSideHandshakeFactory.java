@@ -20,7 +20,6 @@ import java.io.InputStream;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.util.Map;
 
 import org.apache.logging.log4j.Logger;
 
@@ -48,8 +47,8 @@ class ServerSideHandshakeFactory {
       DistributedSystem system, SecurityService securityService, ServerConnection connection)
       throws Exception {
     // Read the version byte from the socket
-    Version clientVersion = readClientVersion(socket, timeout, communicationMode.isWAN());
-
+    Version clientVersion =
+        readClientVersion(socket, timeout, communicationMode.isWAN(), connection);
 
     if (logger.isDebugEnabled()) {
       logger.debug("Client version: {}", clientVersion);
@@ -64,7 +63,8 @@ class ServerSideHandshakeFactory {
         securityService, connection);
   }
 
-  private Version readClientVersion(Socket socket, int timeout, boolean isWan)
+  private Version readClientVersion(Socket socket, int timeout, boolean isWan,
+      ServerConnection connection)
       throws IOException, VersionException {
     int soTimeout = -1;
     try {

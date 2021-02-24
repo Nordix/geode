@@ -27,8 +27,8 @@ import org.apache.geode.Instantiator;
 import org.apache.geode.internal.ByteBufferOutputStream;
 import org.apache.geode.internal.InternalDataSerializer;
 import org.apache.geode.internal.InternalInstantiator;
-import org.apache.geode.internal.serialization.Version;
 import org.apache.geode.internal.net.NioSslEngine;
+import org.apache.geode.internal.serialization.Version;
 import org.apache.geode.util.internal.GeodeGlossary;
 
 public class SocketMessageWriter {

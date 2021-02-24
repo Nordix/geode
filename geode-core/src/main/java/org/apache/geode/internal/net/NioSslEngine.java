@@ -423,18 +423,13 @@ public class NioSslEngine implements NioFilter {
         targetBuffer.capacity() * 2);
   }
 
-  @VisibleForTesting
-  public ByteBufferSharing shareOutputBuffer() throws IOException {
-    return outputSharing.open();
+  private ByteBuffer shareOutputBuffer(final long time, final TimeUnit unit)
+      throws IOException {
+    return myNetData;
   }
 
-  private ByteBufferSharing shareOutputBuffer(final long time, final TimeUnit unit)
-      throws OpenAttemptTimedOut, IOException {
-    return outputSharing.open(time, unit);
-  }
-
-  public ByteBufferSharing shareInputBuffer() throws IOException {
-    return inputSharing.open();
+  public ByteBuffer shareInputBuffer() throws IOException {
+    return peerAppData;
   }
 
   public SSLEngine getEngine() {

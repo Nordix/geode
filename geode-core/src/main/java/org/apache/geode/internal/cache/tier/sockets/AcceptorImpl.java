@@ -96,7 +96,6 @@ import org.apache.geode.internal.cache.wan.GatewayReceiverStats;
 import org.apache.geode.internal.inet.LocalHostUtil;
 import org.apache.geode.internal.logging.CoreLoggingExecutors;
 import org.apache.geode.internal.monitoring.ThreadsMonitoring;
-
 import org.apache.geode.internal.net.BufferPool;
 import org.apache.geode.internal.net.NioSslEngine;
 import org.apache.geode.internal.net.SocketCloser;
@@ -1947,21 +1946,11 @@ public class AcceptorImpl implements Acceptor, Runnable {
     releaseCommBuffer(Message.setTLCommBuffer(null));
   }
 
-  @Override
-  public int getMaximumTimeBetweenPings() {
-    return maximumTimeBetweenPings;
-  }
-
-
-  @Override
-  public SocketCloser getSocketCloser() {
-    return socketCloser;
-  }
 
   private NioSslEngine createNIOSSLEngine(SocketChannel channel) throws IOException {
     InetSocketAddress address = (InetSocketAddress) channel.getRemoteAddress();
     SSLEngine engine =
-        socketCreator.createSSLEngine(address.getHostString(), address.getPort());
+        socketCreator.createSSLEngine(address.getHostString(), address.getPort(), false);
 
     int packetBufferSize = engine.getSession().getPacketBufferSize();
     ByteBuffer inbuffer = bufferPool.acquireNonDirectReceiveBuffer(packetBufferSize);

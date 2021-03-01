@@ -40,6 +40,7 @@ import javax.net.ssl.SSLSession;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.GemFireIOException;
+import org.apache.geode.annotations.VisibleForTesting;
 import org.apache.geode.internal.net.BufferPool.BufferType;
 import org.apache.geode.internal.net.ByteBufferSharingImpl.OpenAttemptTimedOut;
 import org.apache.geode.logging.internal.log4j.api.LogService;
@@ -422,13 +423,18 @@ public class NioSslEngine implements NioFilter {
         targetBuffer.capacity() * 2);
   }
 
-  private ByteBuffer shareOutputBuffer(final long time, final TimeUnit unit)
-      throws IOException {
-    return myNetData;
+  @VisibleForTesting
+  public ByteBufferSharing shareOutputBuffer() throws IOException {
+    return outputSharing.open();
   }
 
-  public ByteBuffer shareInputBuffer() throws IOException {
-    return peerAppData;
+  private ByteBufferSharing shareOutputBuffer(final long time, final TimeUnit unit)
+      throws OpenAttemptTimedOut, IOException {
+    return outputSharing.open(time, unit);
+  }
+
+  public ByteBufferSharing shareInputBuffer() throws IOException {
+    return inputSharing.open();
   }
 
   public SSLEngine getEngine() {

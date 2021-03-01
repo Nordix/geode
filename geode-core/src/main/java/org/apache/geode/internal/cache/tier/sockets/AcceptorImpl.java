@@ -519,6 +519,9 @@ public class AcceptorImpl implements Acceptor, Runnable {
             .getInternalDistributedSystem().getDM().getDistribution();
         if (distribution != null) {
           tmp_buffpool = distribution.getDirectChannel().getConduit().getBufferPool();
+        } else {
+          DistributionManager dm = internalCache.getInternalDistributedSystem().getDM();
+          tmp_buffpool = new BufferPool(dm.getStats());
         }
       }
       selector = tmp_s;

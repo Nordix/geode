@@ -865,10 +865,13 @@ public class Message {
         throw new EOFException(
             "The connection has been reset while reading the header");
       }
-      if (this.messageStats != null) {
-        this.messageStats.incReceivedBytes(bytesRead);
-      }
+      
       cb.flip();
+      try (final ByteBufferSharing outputSharing = sslEngine.unwrap(cb)) {
+        if (this.messageStats != null) {
+          this.messageStats.incReceivedBytes(outputSharing.getBuffer().remaining());
+        }
+      }
       return;
     }
 

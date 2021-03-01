@@ -29,6 +29,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.geode.cache.UnsupportedVersionException;
 import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.cache.tier.CommunicationMode;
+import org.apache.geode.internal.net.ByteBufferSharing;
 import org.apache.geode.internal.net.NioSslEngine;
 import org.apache.geode.internal.serialization.UnsupportedSerializationVersionException;
 import org.apache.geode.internal.serialization.Version;
@@ -67,8 +68,10 @@ class ClientRegistrationMetadata {
     if (sslEngine == null) {
       inputStream = socket.getInputStream();
     } else {
-      ByteBuffer unwrapbuff = sslEngine.getUnwrappedBuffer(null);
-      inputStream = new ByteBufferInputStream(unwrapbuff);
+      try (final ByteBufferSharing sharedBuffer = sslEngine.getUnwrappedBuffer()) {
+        ByteBuffer unwrapbuff = sharedBuffer.getBuffer();
+        inputStream = new ByteBufferInputStream(unwrapbuff);
+      }
     }
     DataInputStream unversionedDataInputStream = new DataInputStream(inputStream);
 

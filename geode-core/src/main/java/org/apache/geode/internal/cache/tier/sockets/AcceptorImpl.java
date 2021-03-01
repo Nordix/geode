@@ -97,6 +97,7 @@ import org.apache.geode.internal.inet.LocalHostUtil;
 import org.apache.geode.internal.logging.CoreLoggingExecutors;
 import org.apache.geode.internal.monitoring.ThreadsMonitoring;
 import org.apache.geode.internal.net.BufferPool;
+import org.apache.geode.internal.net.ByteBufferSharing;
 import org.apache.geode.internal.net.NioSslEngine;
 import org.apache.geode.internal.net.SocketCloser;
 import org.apache.geode.internal.net.SocketCreator;
@@ -1598,10 +1599,13 @@ public class AcceptorImpl implements Acceptor, Runnable {
     } else {
       bbos.flush();
       ByteBuffer buffer = bbos.getContentBuffer();
-      ByteBuffer wrappedBuffer = engine.wrap(buffer);
-      if (socket != null) {
-        while (wrappedBuffer.remaining() > 0) {
-          socket.getChannel().write(wrappedBuffer);
+
+      try (final ByteBufferSharing outputSharing = engine.wrap(buffer)) {
+        final ByteBuffer wrappedBuffer = outputSharing.getBuffer();
+        if (socket != null) {
+          while (wrappedBuffer.remaining() > 0) {
+            socket.getChannel().write(wrappedBuffer);
+          }
         }
       }
       bbos.close();
@@ -1668,11 +1672,14 @@ public class AcceptorImpl implements Acceptor, Runnable {
         socketChannel.configureBlocking(true);
       }
       inbuffer.flip();
-      ByteBuffer unwrapbuff = sslengine.unwrap(inbuffer);
 
-      bufferPool.releaseReceiveBuffer(inbuffer);
-      unwrapbuff.flip();
-      byte modeNumber = unwrapbuff.get();
+      byte modeNumber = 0;
+      try (final ByteBufferSharing sharedBuffer = sslengine.unwrap(inbuffer)) {
+        final ByteBuffer unwrapbuff = sharedBuffer.getBuffer();
+        bufferPool.releaseReceiveBuffer(inbuffer);
+        unwrapbuff.flip();
+        modeNumber = unwrapbuff.get();
+      }
 
       return CommunicationMode.fromModeNumber(modeNumber);
     }
@@ -1972,6 +1979,12 @@ public class AcceptorImpl implements Acceptor, Runnable {
     }
 
     releaseCommBuffer(Message.setTLCommBuffer(null));
+  }
+
+
+  @Override
+  public int getMaximumTimeBetweenPings() {
+    return maximumTimeBetweenPings;
   }
 
 

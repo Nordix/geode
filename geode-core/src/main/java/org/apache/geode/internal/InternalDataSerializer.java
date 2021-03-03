@@ -2496,6 +2496,7 @@ public abstract class InternalDataSerializer extends DataSerializer {
     if (logger.isTraceEnabled(LogMarker.SERIALIZER_VERBOSE)) {
       logger.trace(LogMarker.SERIALIZER_VERBOSE, "basicReadObject: header={}", header);
     }
+    logger.info("basicReadObject: header={} ", header);
 
     if (headerDSCode == null) {
       throw new IOException("Unknown header byte: " + header);

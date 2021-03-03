@@ -103,7 +103,10 @@ public class WanLocatorDiscovererImpl implements WanLocatorDiscoverer {
   private void exchangeRemoteLocators(int port, DistributionConfigImpl config,
       LocatorMembershipListener locatorListener, final String hostnameForClients) {
     RemoteLocatorJoinRequest request = buildRemoteDSJoinRequest(port, config, hostnameForClients);
+    logger.info("exchangeRemoteLocators Remote locator join request: " + request.toString());
     String remoteDistributedSystems = config.getRemoteLocators();
+    logger.info(
+        "exchangeRemoteLocators remotedDistributedSystemTokens:  " + remoteDistributedSystems);
     if (remoteDistributedSystems.length() > 0) {
       StringTokenizer remoteLocators = new StringTokenizer(remoteDistributedSystems, ",");
       while (remoteLocators.hasMoreTokens()) {
@@ -113,6 +116,7 @@ public class WanLocatorDiscovererImpl implements WanLocatorDiscoverer {
             new LocatorDiscovery(this, remoteLocatorId, request, locatorListener);
         LocatorDiscovery.RemoteLocatorDiscovery remoteLocatorDiscovery =
             localDiscovery.new RemoteLocatorDiscovery();
+        logger.info("exchangeRemoteLocators Remote locator id: " + remoteLocatorId.toString());
         this._executor.execute(remoteLocatorDiscovery);
       }
     }

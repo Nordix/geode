@@ -184,7 +184,9 @@ public class LocatorDiscovery {
   public void exchangeRemoteLocators() {
     int retryAttempt = 1;
     DistributionLocatorId remoteLocator = this.locatorId;
+    logger.info("LocatorDiscovery:exchangeRemoteLocators remoteLocator " + remoteLocator);
     while (!getDiscoverer().isStopped()) {
+      logger.info("LocatorDiscovery: discoverer is not stopped");
       RemoteLocatorJoinResponse response;
       try {
         response =
@@ -229,7 +231,7 @@ public class LocatorDiscovery {
         }
         retryAttempt++;
         continue;
-      } catch (ClassNotFoundException classNotFoundException) {
+      } catch (ClassNotFoundException | ClassCastException classNotFoundException) {
         logger.fatal("Locator discovery task encountred unexpected exception",
             classNotFoundException);
         break;

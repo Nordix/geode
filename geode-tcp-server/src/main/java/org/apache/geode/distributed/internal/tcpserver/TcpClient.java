@@ -149,15 +149,21 @@ public class TcpClient {
       boolean replyExpected) throws IOException, ClassNotFoundException {
     long giveupTime = System.currentTimeMillis() + timeout;
 
+    logger.info("requestToServer: timeout: " + timeout);
     // Get the GemFire version of the TcpServer first, before sending any other request.
     short serverVersion = getServerVersion(addr, timeout);
+    logger.info("requestToServer: serverVersion: " + serverVersion);
 
     if (serverVersion > Version.CURRENT_ORDINAL) {
+      logger.info("requestToServer: servers is greater than current: " + Version.CURRENT_ORDINAL);
       serverVersion = Version.CURRENT_ORDINAL;
     }
+    logger.info("requestToServer: servers is lower than current ordinal");
 
     // establish the old GossipVersion for the server
     int gossipVersion = TcpServer.getCurrentGossipVersion();
+
+    logger.info("requestToServer: getCurrentGossipVersion " + gossipVersion);
 
     if (Version.GFE_71.compareTo(serverVersion) > 0) {
       gossipVersion = TcpServer.getOldGossipVersion();
@@ -165,10 +171,11 @@ public class TcpClient {
 
     long newTimeout = giveupTime - System.currentTimeMillis();
     if (newTimeout <= 0) {
+      logger.info("requestToServer: timeout happened return null");
       return null;
     }
 
-    logger.debug("TcpClient sending {} to {}", request, addr);
+    logger.info("TcpClient sending {} to {}", request, addr);
 
     Socket sock =
         socketCreator.forCluster().connect(addr, (int) newTimeout, null, socketFactory);
@@ -184,35 +191,35 @@ public class TcpClient {
 
       out.writeInt(gossipVersion);
       if (gossipVersion > TcpServer.getOldGossipVersion()) {
+        logger.info("requestToServer: writeShort version");
         out.writeShort(serverVersion);
       }
-
+      logger.info("requestToServer: objectSerializer.writeObject");
       objectSerializer.writeObject(request, out);
       out.flush();
-
+      logger.info("requestToServer: objectSerializer.writeObject done");
       if (replyExpected) {
         DataInputStream in = new DataInputStream(sock.getInputStream());
         in = new VersionedDataInputStream(in, Version.fromOrdinal(serverVersion));
         try {
           Object response = objectDeserializer.readObject(in);
-          logger.debug("received response: {}", response);
+          logger.info("received response: {}", response);
           return response;
         } catch (EOFException ex) {
-          logger.debug("requestToServer EOFException ", ex);
+          logger.info("requestToServer EOFException ", ex);
           EOFException eof = new EOFException("Locator at " + addr
               + " did not respond. This is normal if the locator was shutdown. If it wasn't check its log for exceptions.");
           eof.initCause(ex);
           throw eof;
         }
       } else {
+        logger.info("requestToServer: replay not expected");
         return null;
       }
     } catch (UnsupportedSerializationVersionException ex) {
-      if (logger.isDebugEnabled()) {
-        logger
-            .debug("Remote TcpServer version: " + serverVersion + " is higher than local version: "
-                + Version.CURRENT_ORDINAL + ". This is never expected as remoteVersion");
-      }
+      logger
+          .info("Remote TcpServer version: " + serverVersion + " is higher than local version: "
+              + Version.CURRENT_ORDINAL + ". This is never expected as remoteVersion");
       return null;
     } finally {
       try {
@@ -248,15 +255,20 @@ public class TcpClient {
     }
 
     if (serverVersion != null) {
+      logger.info("getServerVersion: return not null serverVersion: " + serverVersion);
       return serverVersion;
     }
+    logger.info("getServerVersion: serverVersionIsNUll");
 
     gossipVersion = TcpServer.getOldGossipVersion();
+    logger.info("getServerVersion: gossipVersion: " + gossipVersion);
 
     try {
+      logger.info("getServerVersion:connect to get remote locator version ");
       sock = socketCreator.forCluster().connect(addr, timeout, null, socketFactory);
       sock.setSoTimeout(timeout);
     } catch (SSLHandshakeException e) {
+      logger.info("getServerVersion:connect SSLHandshakeException");
       if ((e.getCause() instanceof EOFException)
           && (e.getCause().getMessage().contains("SSL peer shut down incorrectly"))) {
         throw new IOException("Remote host terminated the handshake", e);
@@ -264,19 +276,24 @@ public class TcpClient {
         throw new IllegalStateException("Unable to form SSL connection", e);
       }
     } catch (SSLException e) {
+      logger.info("getServerVersion:connect IllegalStateException");
       throw new IllegalStateException("Unable to form SSL connection", e);
     }
-
+    logger.info("getServerVersion:successfully connected");
     try {
       OutputStream outputStream = new BufferedOutputStream(sock.getOutputStream());
       DataOutputStream out =
           new VersionedDataOutputStream(new DataOutputStream(outputStream), Version.GFE_57);
 
+      logger.info("getServerVersion: write gossipVersion");
       out.writeInt(gossipVersion);
 
+      logger.info("getServerVersion: write VersionRequest");
       VersionRequest verRequest = new VersionRequest();
       objectSerializer.writeObject(verRequest, out);
       out.flush();
+
+      logger.info("getServerVersion: Version request flushed");
 
       InputStream inputStream = sock.getInputStream();
       DataInputStream in = new DataInputStream(inputStream);
@@ -284,13 +301,16 @@ public class TcpClient {
       try {
         Object readObject = objectDeserializer.readObject(in);
         if (!(readObject instanceof VersionResponse)) {
+          logger.info("getServerVersion: version is incorrect");
           throw new IllegalThreadStateException(
               "Server version response invalid: "
                   + "This could be the result of trying to connect a non-SSL-enabled client to an SSL-enabled locator.");
         }
-
+        logger.info("getServerVersion: version is correct");
         VersionResponse response = (VersionResponse) readObject;
         serverVersion = response.getVersionOrdinal();
+
+        logger.info("getServerVersion: VersionResponse - version ordinal" + serverVersion);
         synchronized (serverVersions) {
           serverVersions.put(addr, serverVersion);
         }
@@ -299,16 +319,21 @@ public class TcpClient {
 
       } catch (EOFException ex) {
         // old locators will not recognize the version request and will close the connection
+        logger.info(
+            "getServerVersion: old locators will not recognize the version request and will close the connection");
       }
     } finally {
+      logger.info("getServerVersion: finally block");
       if (!sock.isClosed()) {
         try {
           sock.setSoLinger(true, 0); // initiate an abort on close to shut down the server's socket
+          logger.info("getServerVersion: finally block soLinger");
         } catch (Exception e) {
           logger.error("Error aborting socket ", e);
         }
         try {
           sock.close();
+          logger.info("getServerVersion: finally block closed");
         } catch (Exception e) {
           logger.error("Error closing socket ", e);
         }
@@ -317,6 +342,7 @@ public class TcpClient {
     synchronized (serverVersions) {
       serverVersions.put(addr, Version.GFE_57.ordinal());
     }
+    logger.info("getServerVersion: returned from finally block");
     return Version.GFE_57.ordinal();
   }
 }

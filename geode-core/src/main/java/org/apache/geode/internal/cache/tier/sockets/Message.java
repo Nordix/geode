@@ -865,7 +865,7 @@ public class Message {
         throw new EOFException(
             "The connection has been reset while reading the header");
       }
-      
+
       cb.flip();
       try (final ByteBufferSharing outputSharing = sslEngine.unwrap(cb)) {
         if (this.messageStats != null) {

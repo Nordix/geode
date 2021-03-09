@@ -1592,7 +1592,12 @@ public class LocatorLauncher extends AbstractLauncher<String> {
         return this;
       } else {
         try {
-          InetAddress address = InetAddress.getByName(bindAddress);
+          InetAddress address;
+          if (LocalHostUtil.isWildcardAddress(bindAddress)) {
+            address = LocalHostUtil.getAnyLocalAddress();
+          } else {
+            address = InetAddress.getByName(bindAddress);
+          }
           if (LocalHostUtil.isLocalHost(address)) {
             this.bindAddress = address;
             return this;

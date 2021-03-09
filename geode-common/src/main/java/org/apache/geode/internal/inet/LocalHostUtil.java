@@ -217,6 +217,18 @@ public class LocalHostUtil {
   }
 
   /**
+   * Returns the special address that can be used to bind to all local addresses.
+   * In most cases this will be "0.0.0.0".
+   */
+  public static InetAddress getAnyLocalAddress() {
+    return new InetSocketAddress(0).getAddress();
+  }
+
+  public static boolean isWildcardAddress(String address) {
+    return (address != null && (address.equals("0.0.0.0") || address.equals("::")));
+  }
+
+  /**
    * Returns true if host matches the LOCALHOST.
    */
   public static boolean isLocalHost(Object host) {

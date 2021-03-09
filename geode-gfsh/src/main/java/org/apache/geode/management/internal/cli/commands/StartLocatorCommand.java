@@ -17,6 +17,8 @@ package org.apache.geode.management.internal.cli.commands;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +38,7 @@ import org.apache.geode.distributed.AbstractLauncher;
 import org.apache.geode.distributed.ConfigurationProperties;
 import org.apache.geode.distributed.LocatorLauncher;
 import org.apache.geode.distributed.ServerLauncher;
+import org.apache.geode.internal.inet.LocalHostUtil;
 import org.apache.geode.internal.lang.SystemUtils;
 import org.apache.geode.internal.process.ProcessStreamReader;
 import org.apache.geode.internal.util.IOUtils;
@@ -63,7 +66,7 @@ public class StartLocatorCommand extends OfflineGfshCommand {
       @CliOption(key = CliStrings.START_LOCATOR__MEMBER_NAME,
           help = CliStrings.START_LOCATOR__MEMBER_NAME__HELP) String memberName,
       @CliOption(key = CliStrings.START_LOCATOR__BIND_ADDRESS,
-          help = CliStrings.START_LOCATOR__BIND_ADDRESS__HELP) final String bindAddress,
+          help = CliStrings.START_LOCATOR__BIND_ADDRESS__HELP) String bindAddress,
       @CliOption(key = CliStrings.START_LOCATOR__CLASSPATH,
           help = CliStrings.START_LOCATOR__CLASSPATH__HELP) final String classpath,
       @CliOption(key = CliStrings.START_LOCATOR__FORCE, unspecifiedDefaultValue = "false",
@@ -127,6 +130,14 @@ public class StartLocatorCommand extends OfflineGfshCommand {
       memberName = StartMemberUtils.getNameGenerator().generate('-');
     }
 
+    if (bindAddress != null && bindAddress.equals("*")) {
+      if (LocalHostUtil.getAnyLocalAddress() instanceof Inet4Address) {
+        bindAddress = "0.0.0.0";
+      } else if (LocalHostUtil.getAnyLocalAddress() instanceof Inet6Address) {
+        bindAddress = "::";
+      }
+    }
+
     workingDirectory = StartMemberUtils.resolveWorkingDir(
         workingDirectory == null ? null : new File(workingDirectory), new File(memberName));
 
@@ -182,6 +193,8 @@ public class StartLocatorCommand extends OfflineGfshCommand {
 
     Properties gemfireProperties = new Properties();
 
+    StartMemberUtils.setPropertyIfNotNull(gemfireProperties, ConfigurationProperties.BIND_ADDRESS,
+        bindAddress);
     StartMemberUtils.setPropertyIfNotNull(gemfireProperties, ConfigurationProperties.GROUPS, group);
     StartMemberUtils.setPropertyIfNotNull(gemfireProperties, ConfigurationProperties.LOCATORS,
         locators);
@@ -213,7 +226,6 @@ public class StartLocatorCommand extends OfflineGfshCommand {
       locatorLauncherBuilder.setMemberName(memberName);
     }
     LocatorLauncher locatorLauncher = locatorLauncherBuilder.build();
-
     String[] locatorCommandLine = createStartLocatorCommandLine(locatorLauncher,
         gemfirePropertiesFile, gemfireSecurityPropertiesFile, gemfireProperties, classpath,
         includeSystemClasspath, jvmArgsOpts, initialHeap, maxHeap);
@@ -464,7 +476,6 @@ public class StartLocatorCommand extends OfflineGfshCommand {
     StartMemberUtils.addJvmArgumentsAndOptions(commandLine, jvmArgsOpts);
     StartMemberUtils.addInitialHeap(commandLine, initialHeap);
     StartMemberUtils.addMaxHeap(commandLine, maxHeap);
-
     commandLine.add(
         "-D".concat(AbstractLauncher.SIGNAL_HANDLER_REGISTRATION_SYSTEM_PROPERTY.concat("=true")));
     commandLine.add("-Djava.awt.headless=true");

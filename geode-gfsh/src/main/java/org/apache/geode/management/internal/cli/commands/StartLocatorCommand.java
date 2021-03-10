@@ -123,7 +123,9 @@ public class StartLocatorCommand extends OfflineGfshCommand {
           help = CliStrings.START_LOCATOR__HTTP_SERVICE_BIND_ADDRESS__HELP) final String httpServiceBindAddress,
       @CliOption(key = CliStrings.START_LOCATOR__REDIRECT_OUTPUT, unspecifiedDefaultValue = "false",
           specifiedDefaultValue = "true",
-          help = CliStrings.START_LOCATOR__REDIRECT_OUTPUT__HELP) final Boolean redirectOutput)
+          help = CliStrings.START_LOCATOR__REDIRECT_OUTPUT__HELP) final Boolean redirectOutput,
+      @CliOption(key = CliStrings.START_LOCATOR__MEMBERSHIP_BIND_ADDRESS,
+          help = CliStrings.START_LOCATOR__MEMBERSHIP_BIND_ADDRESS__HELP) final String membershipBindAddress)
       throws Exception {
     if (StringUtils.isBlank(memberName)) {
       // when the user doesn't give us a name, we make one up!
@@ -146,7 +148,7 @@ public class StartLocatorCommand extends OfflineGfshCommand {
         mcastPort, port, workingDirectory, gemfirePropertiesFile, gemfireSecurityPropertiesFile,
         initialHeap, maxHeap, jvmArgsOpts, connect, enableSharedConfiguration,
         loadSharedConfigurationFromDirectory, clusterConfigDir, httpServicePort,
-        httpServiceBindAddress, redirectOutput);
+        httpServiceBindAddress, redirectOutput, membershipBindAddress);
 
   }
 
@@ -176,7 +178,8 @@ public class StartLocatorCommand extends OfflineGfshCommand {
       String clusterConfigDir,
       Integer httpServicePort,
       String httpServiceBindAddress,
-      Boolean redirectOutput)
+      Boolean redirectOutput,
+      String membershipBindAddress)
       throws MalformedObjectNameException, IOException, InterruptedException,
       ClassNotFoundException {
     if (gemfirePropertiesFile != null && !gemfirePropertiesFile.exists()) {
@@ -227,6 +230,7 @@ public class StartLocatorCommand extends OfflineGfshCommand {
     if (memberName != null) {
       locatorLauncherBuilder.setMemberName(memberName);
     }
+    locatorLauncherBuilder.setMembershipBindAddress(membershipBindAddress);
     LocatorLauncher locatorLauncher = locatorLauncherBuilder.build();
     String[] locatorCommandLine = createStartLocatorCommandLine(locatorLauncher,
         gemfirePropertiesFile, gemfireSecurityPropertiesFile, gemfireProperties, classpath,

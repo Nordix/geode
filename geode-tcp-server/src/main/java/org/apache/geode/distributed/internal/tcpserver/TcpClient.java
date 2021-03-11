@@ -281,25 +281,20 @@ public class TcpClient {
       InputStream inputStream = sock.getInputStream();
       DataInputStream in = new DataInputStream(inputStream);
       in = new VersionedDataInputStream(in, Version.GFE_57);
-      try {
-        Object readObject = objectDeserializer.readObject(in);
-        if (!(readObject instanceof VersionResponse)) {
-          throw new IllegalThreadStateException(
-              "Server version response invalid: "
-                  + "This could be the result of trying to connect a non-SSL-enabled client to an SSL-enabled locator.");
-        }
-
-        VersionResponse response = (VersionResponse) readObject;
-        serverVersion = response.getVersionOrdinal();
-        synchronized (serverVersions) {
-          serverVersions.put(addr, serverVersion);
-        }
-
-        return serverVersion;
-
-      } catch (EOFException ex) {
-        // old locators will not recognize the version request and will close the connection
+      Object readObject = objectDeserializer.readObject(in);
+      if (!(readObject instanceof VersionResponse)) {
+        throw new IllegalThreadStateException(
+            "Server version response invalid: "
+                + "This could be the result of trying to connect a non-SSL-enabled client to an SSL-enabled locator.");
       }
+
+      VersionResponse response = (VersionResponse) readObject;
+      serverVersion = response.getVersionOrdinal();
+      synchronized (serverVersions) {
+        serverVersions.put(addr, serverVersion);
+      }
+      return serverVersion;
+
     } finally {
       if (!sock.isClosed()) {
         try {
@@ -314,9 +309,5 @@ public class TcpClient {
         }
       }
     }
-    synchronized (serverVersions) {
-      serverVersions.put(addr, Version.GFE_57.ordinal());
-    }
-    return Version.GFE_57.ordinal();
   }
 }

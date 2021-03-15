@@ -65,12 +65,12 @@ public class StartMemberUtilsTest {
     String workingDir = StartMemberUtils.resolveWorkingDirectory(null, "server1");
     assertThat(new File(workingDir)).exists();
     assertThat(workingDir).endsWith("server1");
-    try{
-      
-    }catch (Exception e){
+    try {
+
+    } catch (Exception e) {
       try {
 
-      }catch (Exception ex){
+      } catch (Exception ex) {
 
       }
     }

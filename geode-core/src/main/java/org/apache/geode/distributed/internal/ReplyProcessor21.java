@@ -1323,4 +1323,16 @@ public class ReplyProcessor21 implements MembershipListener {
     }
   }
 
+  public void removeReceiveConnection(Connection con) {
+    synchronized (receiveCons) {
+      receiveCons.remove(con);
+    }
+  }
+
+  public void removeSendConnection(Connection con) {
+    synchronized (sendCons) {
+      sendCons.remove(con);
+    }
+  }
+
 }

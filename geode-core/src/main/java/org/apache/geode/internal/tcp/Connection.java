@@ -362,7 +362,7 @@ public class Connection implements Runnable {
   private int recvBufferSize = -1;
 
   /** list of reply processors that are monitoring this connection */
-  private final List attachedProcessors = new ArrayList();
+  private final List<ReplyProcessor21> attachedProcessors = new ArrayList();
 
   @MakeNotStatic
   private static final ByteBuffer okHandshakeBuf;
@@ -1314,6 +1314,7 @@ public class Connection implements Runnable {
       return;
     }
 
+    removeConsInProcessors();
     boolean removeEndpoint = p_removeEndpoint;
     if (!onlyCleanup) {
       synchronized (this) {
@@ -1456,6 +1457,22 @@ public class Connection implements Runnable {
     if (!copyProcessors.isEmpty()) {
       for (ReplyProcessor21 processor : copyProcessors) {
         processor.cancel(getRemoteAddress(), reason);
+      }
+    }
+  }
+
+  // Remove connection from attached processors
+  private void removeConsInProcessors() {
+    synchronized (attachedProcessors) {
+      if (!attachedProcessors.isEmpty()) {
+        for (ReplyProcessor21 processor : attachedProcessors) {
+          if (isReceiver) {
+            processor.removeReceiveConnection(this);
+          } else {
+            processor.removeSendConnection(this);
+          }
+        }
+        attachedProcessors.clear();
       }
     }
   }

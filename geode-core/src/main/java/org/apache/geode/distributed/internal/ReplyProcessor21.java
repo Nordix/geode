@@ -441,6 +441,7 @@ public class ReplyProcessor21 implements MembershipListener {
       final DistributionManager dm = getDistributionManager(); // fix for bug 33253
       Set ids = getDistributionManagerIds();
       if (ids == null || ids.contains(sender)) {
+        logger.info("ReplyProcessor process, received reply not expected from {}", sender);
         List viewMembers = dm.getViewMembers();
         if (system.getConfig().getMcastPort() == 0 // could be using multicast & will get responses
                                                    // from everyone

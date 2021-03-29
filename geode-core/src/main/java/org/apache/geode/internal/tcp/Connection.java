@@ -1281,6 +1281,7 @@ public class Connection implements Runnable {
    * Invoking this method ensures that the proper synchronization is done.
    */
   void requestClose(String reason) {
+    logger.info("Connection requestClose reason {}", reason);
     close(reason, true, false, false, false);
   }
 
@@ -1455,6 +1456,7 @@ public class Connection implements Runnable {
   private void notifyProcessors(String reason) {
     List<ReplyProcessor21> copyProcessors = new ArrayList<>(attachedProcessors);
     if (!copyProcessors.isEmpty()) {
+      logger.info("Connection notifyProcessors {}", copyProcessors);
       for (ReplyProcessor21 processor : copyProcessors) {
         if (isReceiver) {
           processor.removeReceiveConnection(this);

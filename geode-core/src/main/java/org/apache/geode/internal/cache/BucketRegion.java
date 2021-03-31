@@ -407,6 +407,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
    */
   LockObject searchAndLock(Object[] keys) {
     final boolean isDebugEnabled = logger.isDebugEnabled();
+    logger.info("BucketRegion searchAndLock keys {}", keys);
 
     LockObject foundLock = null;
 
@@ -445,6 +446,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
    */
   public void removeAndNotifyKeys(Object[] keys) {
     final boolean isTraceEnabled = logger.isTraceEnabled();
+    logger.info("BucketRegion removeAndNotifyKeys keys {}", keys);
 
     synchronized (allKeysMap) {
       for (Object key : keys) {
@@ -474,12 +476,15 @@ public class BucketRegion extends DistributedRegion implements Bucket {
    */
   public boolean waitUntilLocked(Object[] keys) {
     final boolean isDebugEnabled = logger.isDebugEnabled();
+    logger.info("BucketRegion waitUntilLocked keys {}", keys);
 
     final String title = "BucketRegion.waitUntilLocked:";
     while (true) {
       LockObject foundLock = searchAndLock(keys);
 
       if (foundLock != null) {
+        logger.info("BucketRegion waitUntilLocked foundLock {}", foundLock);
+
         synchronized (foundLock) {
           try {
             while (!foundLock.isRemoved()) {

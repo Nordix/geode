@@ -955,6 +955,7 @@ public class ReplyProcessor21 implements MembershipListener {
     boolean isDone = false;
     synchronized (this) {
       if (!this.done) { // make sure only called once
+        logger.info("ReplyProcessor21 finished");
         this.done = true;
         isDone = true;
         // getSync().release(); // notifies threads in waitForReplies
@@ -1309,7 +1310,7 @@ public class ReplyProcessor21 implements MembershipListener {
   public void cancel(InternalDistributedMember sender, String reason) {
     processException(
         new ReplyException("Connection closed while waiting for reply message, reason: " + reason));
-    removeMember(sender, false);
+    removeMember(sender, true);
     checkIfDone();
   }
 

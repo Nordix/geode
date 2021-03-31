@@ -1281,6 +1281,7 @@ public class Connection implements Runnable {
    * Invoking this method ensures that the proper synchronization is done.
    */
   void requestClose(String reason) {
+    notifyProcessors(reason);
     logger.info("Connection requestClose reason {}", reason);
     close(reason, true, false, false, false);
   }
@@ -1473,6 +1474,7 @@ public class Connection implements Runnable {
   private void removeConsInProcessors() {
     synchronized (attachedProcessors) {
       if (!attachedProcessors.isEmpty()) {
+        logger.info("There are attachedProcessors {} for released connection", attachedProcessors);
         for (ReplyProcessor21 processor : attachedProcessors) {
           if (isReceiver) {
             processor.removeReceiveConnection(this);
@@ -1728,7 +1730,6 @@ public class Connection implements Runnable {
           }
           readerShuttingDown = true;
           String reason = String.format("IOException in channel read: %s", e);
-          notifyProcessors(reason);
           try {
             requestClose(reason);
           } catch (Exception ignored) {

@@ -1280,7 +1280,7 @@ public class Connection implements Runnable {
     close(reason, true, false, false, false);
   }
 
-  boolean isClosing() {
+  public boolean isClosing() {
     return closing.get();
   }
 

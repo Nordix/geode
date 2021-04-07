@@ -1277,6 +1277,7 @@ public class Connection implements Runnable {
    * Invoking this method ensures that the proper synchronization is done.
    */
   void requestClose(String reason) {
+    logger.info("Connection {} requestClose {}", this, reason);
     close(reason, true, false, false, false);
   }
 
@@ -1285,14 +1286,17 @@ public class Connection implements Runnable {
   }
 
   void closePartialConnect(String reason, boolean beingSick) {
+    logger.info("Connection {} closePartialConnect {}", this, reason);
     close(reason, false, false, beingSick, false);
   }
 
   void closeForReconnect(String reason) {
+    logger.info("Connection {} closeForReconnect {}", this, reason);
     close(reason, true, false, false, false);
   }
 
   void closeOldConnection(String reason) {
+    logger.info("Connection {} closeOldConnection {}", this, reason);
     close(reason, true, true, false, true);
   }
 

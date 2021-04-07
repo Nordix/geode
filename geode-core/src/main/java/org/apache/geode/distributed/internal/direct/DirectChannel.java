@@ -386,10 +386,14 @@ public class DirectChannel {
         con.setInUse(false, 0, 0, 0, null);
       }
     }
+
+    logger.info("SendToMany msg {}, on connections {}", msg, totalSentCons);
+
     if (failedCe != null) {
       throw failedCe;
     }
 
+    /*
     if (!directReply) {
 
       try {
@@ -406,6 +410,7 @@ public class DirectChannel {
         }
       }
     }
+    */
 
     return bytesWritten;
   }

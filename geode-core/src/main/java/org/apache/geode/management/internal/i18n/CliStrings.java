@@ -1427,7 +1427,8 @@ public class CliStrings {
 
   /* 'replicate region' command */
   public static final String REPLICATE_REGION = "replicate region";
-  public static final String REPLICATE_REGION__HELP = "Replicate a region with a senderId via WAN replication";
+  public static final String REPLICATE_REGION__HELP =
+      "Replicate a region with a senderId via WAN replication";
   public static final String REPLICATE_REGION__REGION = "region";
   public static final String REPLICATE_REGION__REGION__HELP =
       "Region from which data will be exported.";

@@ -190,35 +190,37 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
 
   private CliFunctionResult replicateRegion(FunctionContext<String[]> context, Region region,
       GatewaySender sender, long maxRate, int batchSize) {
-    int entries = 0;
+    int replicatedEntries = 0;
     final List<Integer> remoteDSIds = Collections.singletonList(sender.getRemoteDSId());
     final InternalCache cache = (InternalCache) context.getCache();
 
     long batchStartTime = clock.millis();
-    for (Object key : region.keySet()) {
-      final Region.Entry entry = region.getEntry(key);
+    for (Object entry : region.entrySet()) {
       final EntryEventImpl event;
       if (region instanceof PartitionedRegion) {
-        event = createEventForPartitionedRegion(cache, (InternalRegion) region, sender, entry);
+        event = createEventForPartitionedRegion(cache, (InternalRegion) region, sender,
+            (Region.Entry) entry);
       } else {
-        event = createEventForDistributedRegion(cache, (InternalRegion) region, entry);
+        event =
+            createEventForDistributedRegion(cache, (InternalRegion) region, (Region.Entry) entry);
       }
-      if (event == null)
+      if (event == null) {
         continue;
+      }
       ((AbstractGatewaySender) sender).distribute(EnumListenerEvent.AFTER_UPDATE, event,
           remoteDSIds, true);
-      entries++;
+      replicatedEntries++;
       try {
-        if (doActionsIfBatchReplicated(batchStartTime, entries, batchSize, maxRate)) {
+        if (doActionsIfBatchReplicated(batchStartTime, replicatedEntries, batchSize, maxRate)) {
           batchStartTime = System.currentTimeMillis();
         }
       } catch (InterruptedException e) {
         return new CliFunctionResult(context.getMemberName(), CliFunctionResult.StatusState.ERROR,
-            "Operation canceled after having replicated " + entries + " entries");
+            "Operation canceled after having replicated " + replicatedEntries + " entries");
       }
     }
     return new CliFunctionResult(context.getMemberName(), CliFunctionResult.StatusState.OK,
-        "Entries replicated: " + entries);
+        "Entries replicated: " + replicatedEntries);
   }
 
   final CliFunctionResult cancelReplicateRegion(FunctionContext context, Region region,
@@ -245,7 +247,7 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
 
   /**
    * If a complete batch in the last cycle has not been replicated yet it returns false.
-   * Otherwise, it returs true and runs the actions to be done when a batch has been
+   * Otherwise, it returns true and runs the actions to be done when a batch has been
    * replicated: throw an interrupted exception if the operation was canceled and
    * adjust the rate of replication by sleeping if necessary.
    *

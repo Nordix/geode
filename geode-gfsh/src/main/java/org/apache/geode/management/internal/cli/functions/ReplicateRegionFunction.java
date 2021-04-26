@@ -14,15 +14,16 @@
  */
 package org.apache.geode.management.internal.cli.functions;
 
+import java.time.Clock;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
 import org.apache.logging.log4j.Logger;
 
+import org.apache.geode.annotations.VisibleForTesting;
 import org.apache.geode.cache.Declarable;
 import org.apache.geode.cache.Operation;
 import org.apache.geode.cache.Region;
@@ -70,6 +71,25 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
   private static final long serialVersionUID = 1L;
 
   public static final String ID = ReplicateRegionFunction.class.getName();
+
+  private Clock clock = Clock.systemDefaultZone();
+  private ThreadSleeper threadSleeper = new ThreadSleeper();
+
+  class ThreadSleeper {
+    void millis(long millis) throws InterruptedException {
+      Thread.sleep(millis);
+    }
+  }
+
+  @VisibleForTesting
+  public void setClock(Clock clock) {
+    this.clock = clock;
+  }
+
+  @VisibleForTesting
+  public void setThreadSleeper(ThreadSleeper ts) {
+    this.threadSleeper = ts;
+  }
 
   @Override
   public String getId() {
@@ -174,7 +194,7 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     final List<Integer> remoteDSIds = Collections.singletonList(sender.getRemoteDSId());
     final InternalCache cache = (InternalCache) context.getCache();
 
-    long batchStartTime = System.currentTimeMillis();
+    long batchStartTime = clock.millis();
     for (Object key : region.keySet()) {
       final Region.Entry entry = region.getEntry(key);
       final EntryEventImpl event;
@@ -246,13 +266,13 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     if (maxRate == 0) {
       return true;
     }
-    final long currTime = System.currentTimeMillis();
+    final long currTime = clock.millis();
     final long elapsedMs = currTime - startTime;
     if (elapsedMs == 0 || batchSize * 1000L / elapsedMs > maxRate) {
       final long targetElapsedMs = (batchSize * 1000L) / maxRate;
       final long sleepMs = targetElapsedMs - elapsedMs;
       logger.info("Sleeping for {} ms", sleepMs);
-      Thread.sleep(sleepMs);
+      threadSleeper.millis(sleepMs);
     }
     return true;
   }

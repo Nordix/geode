@@ -16,18 +16,21 @@ package org.apache.geode.management.internal.cli.functions;
 
 import java.io.Serializable;
 import java.time.Clock;
-import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.annotations.VisibleForTesting;
+import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.Declarable;
 import org.apache.geode.cache.Operation;
 import org.apache.geode.cache.Region;
+import org.apache.geode.cache.RegionAttributes;
 import org.apache.geode.cache.execute.FunctionContext;
 import org.apache.geode.cache.wan.GatewaySender;
 import org.apache.geode.internal.cache.BucketRegion;
@@ -76,7 +79,7 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
   private Clock clock = Clock.systemDefaultZone();
   private ThreadSleeper threadSleeper = new ThreadSleeper();
 
-  class ThreadSleeper implements Serializable {
+  static class ThreadSleeper implements Serializable {
     void millis(long millis) throws InterruptedException {
       Thread.sleep(millis);
     }
@@ -192,8 +195,8 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
   private CliFunctionResult replicateRegion(FunctionContext<String[]> context, Region region,
       GatewaySender sender, long maxRate, int batchSize) {
     int replicatedEntries = 0;
-    final List<Integer> remoteDSIds = Collections.singletonList(sender.getRemoteDSId());
     final InternalCache cache = (InternalCache) context.getCache();
+    final List<Integer> remoteDSIds = getRemoteDsIds(cache, region);
 
     long batchStartTime = clock.millis();
     for (Object entry : region.entrySet()) {
@@ -212,7 +215,8 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
           remoteDSIds, true);
       replicatedEntries++;
       try {
-        if (doActionsIfBatchReplicated(batchStartTime, replicatedEntries, batchSize, maxRate)) {
+        if (doActionsIfBatchReplicated(cache, batchStartTime, replicatedEntries, batchSize,
+            maxRate)) {
           batchStartTime = System.currentTimeMillis();
         }
       } catch (InterruptedException e) {
@@ -258,7 +262,8 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
    * @param maxRate maximum rate of replication
    * @return true if complete batch was replicated. False otherwise.
    */
-  boolean doActionsIfBatchReplicated(long startTime, int entries, int batchSize, long maxRate)
+  boolean doActionsIfBatchReplicated(InternalCache cache, long startTime, int entries,
+      int batchSize, long maxRate)
       throws InterruptedException {
     if (entries % batchSize != 0) {
       return false;
@@ -266,6 +271,7 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     if (Thread.currentThread().isInterrupted()) {
       throw new InterruptedException();
     }
+    cache.getDistributionManager().getThreadMonitoring().updateThreadStatus();
     if (maxRate == 0) {
       return true;
     }
@@ -305,11 +311,19 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     return event;
   }
 
-  private EntryEventImpl createEvent(InternalCache cache, InternalRegion region,
+  private EntryEventImpl createEvent(Cache cache, InternalRegion region,
       Region.Entry entry) {
     return new DefaultEntryEventFactory().create(region, Operation.UPDATE,
         entry.getKey(),
         entry.getValue(), null, false,
-        cache.getInternalDistributedSystem().getDistributedMember());
+        ((InternalCache) cache).getInternalDistributedSystem().getDistributedMember());
+  }
+
+  private List<Integer> getRemoteDsIds(Cache cache, Region region) {
+    Set<String> senderIds = ((RegionAttributes<?, ?>) region.getAttributes()).getGatewaySenderIds();
+    return senderIds.stream()
+        .map(cache::getGatewaySender)
+        .map(sender -> sender.getRemoteDSId())
+        .collect(Collectors.toList());
   }
 }

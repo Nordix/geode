@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,6 +28,10 @@ import java.time.Clock;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.apache.geode.distributed.internal.DistributionManager;
+import org.apache.geode.internal.cache.InternalCache;
+import org.apache.geode.internal.monitoring.ThreadsMonitoring;
+
 public class ReplicateRegionFunctionTest {
 
   private ReplicateRegionFunction rrf;
@@ -35,6 +40,8 @@ public class ReplicateRegionFunctionTest {
   private int entries = batchSize;
   private Clock clockMock;
   private ReplicateRegionFunction.ThreadSleeper threadSleeperMock;
+  private InternalCache cacheMock;
+  private ThreadsMonitoring threadsMonitoringMock;
 
   @Before
   public void setUp() throws InterruptedException {
@@ -45,18 +52,26 @@ public class ReplicateRegionFunctionTest {
     rrf.setClock(clockMock);
     rrf.setThreadSleeper(threadSleeperMock);
     startTime = System.currentTimeMillis();
+    cacheMock = mock(InternalCache.class);
+    threadsMonitoringMock = mock(ThreadsMonitoring.class);
+    doNothing().when(threadsMonitoringMock).updateThreadStatus();
+    DistributionManager dmMock = mock(DistributionManager.class);
+    when(dmMock.getThreadMonitoring()).thenReturn(threadsMonitoringMock);
+    when(cacheMock.getDistributionManager()).thenReturn(dmMock);
   }
 
   @Test
   public void doActionsIfBatchReplicated_ReturnsFalseIfBatchIsIncomplete()
       throws InterruptedException {
-    assertThat(rrf.doActionsIfBatchReplicated(startTime, 5, 20, 1L)).isFalse();
+    assertThat(rrf.doActionsIfBatchReplicated(cacheMock, startTime, 5, 20, 1L)).isFalse();
+    verify(threadsMonitoringMock, never()).updateThreadStatus();
   }
 
   @Test
   public void doActionsIfBatchReplicated_ReturnsTrueIfBatchIsCompleteAndMaxRateIsZero()
       throws InterruptedException {
-    assertThat(rrf.doActionsIfBatchReplicated(startTime, 20, 20, 0)).isTrue();
+    assertThat(rrf.doActionsIfBatchReplicated(cacheMock, startTime, 20, 20, 0)).isTrue();
+    verify(threadsMonitoringMock, times(1)).updateThreadStatus();
   }
 
   @Test
@@ -66,8 +81,10 @@ public class ReplicateRegionFunctionTest {
     long elapsedTime = 0L;
     long expectedMsToSleep = 250L;
     when(clockMock.millis()).thenReturn(startTime + elapsedTime);
-    assertThat(rrf.doActionsIfBatchReplicated(startTime, entries, batchSize, maxRate)).isTrue();
+    assertThat(rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries, batchSize, maxRate))
+        .isTrue();
     verify(threadSleeperMock, times(1)).millis(expectedMsToSleep);
+    verify(threadsMonitoringMock, times(1)).updateThreadStatus();
   }
 
   @Test
@@ -76,8 +93,10 @@ public class ReplicateRegionFunctionTest {
     long maxRate = 10000;
     long elapsedTime = 100L;
     when(clockMock.millis()).thenReturn(startTime + elapsedTime);
-    assertThat(rrf.doActionsIfBatchReplicated(startTime, entries, batchSize, maxRate)).isTrue();
+    assertThat(rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries, batchSize, maxRate))
+        .isTrue();
     verify(threadSleeperMock, times(0)).millis(anyLong());
+    verify(threadsMonitoringMock, times(1)).updateThreadStatus();
   }
 
   @Test
@@ -86,7 +105,9 @@ public class ReplicateRegionFunctionTest {
     long elapsedTime = 100L;
     long expectedMsToSleep = 150L;
     when(clockMock.millis()).thenReturn(startTime + elapsedTime);
-    assertThat(rrf.doActionsIfBatchReplicated(startTime, entries, batchSize, maxRate)).isTrue();
+    assertThat(rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries, batchSize, maxRate))
+        .isTrue();
     verify(threadSleeperMock, times(1)).millis(expectedMsToSleep);
+    verify(threadsMonitoringMock, times(1)).updateThreadStatus();
   }
 }

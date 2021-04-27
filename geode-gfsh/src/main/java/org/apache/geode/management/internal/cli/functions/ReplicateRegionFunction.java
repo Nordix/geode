@@ -14,6 +14,7 @@
  */
 package org.apache.geode.management.internal.cli.functions;
 
+import java.io.Serializable;
 import java.time.Clock;
 import java.util.Collections;
 import java.util.List;
@@ -75,7 +76,7 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
   private Clock clock = Clock.systemDefaultZone();
   private ThreadSleeper threadSleeper = new ThreadSleeper();
 
-  class ThreadSleeper {
+  class ThreadSleeper implements Serializable {
     void millis(long millis) throws InterruptedException {
       Thread.sleep(millis);
     }

@@ -199,7 +199,18 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     final List<Integer> remoteDSIds = getRemoteDsIds(cache, region);
 
     long batchStartTime = clock.millis();
-    for (Object entry : region.entrySet()) {
+
+    final Set<?> entries;
+    if (region instanceof PartitionedRegion && sender.isParallel()) {
+      entries =
+          ((PartitionedRegion) region).getDataStore().getAllLocalBucketRegions()
+              .stream()
+              .flatMap(br -> ((Set<?>) br.entrySet()).stream()).collect(Collectors.toSet());
+    } else {
+      entries = region.entrySet();
+    }
+
+    for (Object entry : entries) {
       final EntryEventImpl event;
       if (region instanceof PartitionedRegion) {
         event = createEventForPartitionedRegion(cache, (InternalRegion) region, sender,
@@ -228,7 +239,7 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
         "Entries replicated: " + replicatedEntries);
   }
 
-  final CliFunctionResult cancelReplicateRegion(FunctionContext context, Region region,
+  final CliFunctionResult cancelReplicateRegion(FunctionContext<String[]> context, Region region,
       String senderId) {
     String threadName = getReplicateRegionFunctionThreadName(region.getName(), senderId);
     long threadId = 0;
@@ -254,6 +265,7 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
    * If a complete batch in the last cycle has not been replicated yet it returns false.
    * Otherwise, it returns true and runs the actions to be done when a batch has been
    * replicated: throw an interrupted exception if the operation was canceled and
+   * update the "alive" status of the thread so that it does not appear stuck and
    * adjust the rate of replication by sleeping if necessary.
    *
    * @param startTime time at which the batch started to be processed
@@ -288,17 +300,12 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
 
   private EntryEventImpl createEventForDistributedRegion(InternalCache cache, InternalRegion region,
       Region.Entry entry) {
-    EntryEventImpl event = createEvent(cache, region, entry);
-    event.setVersionTag(((NonTXEntry) entry).getRegionEntry().getVersionStamp().asVersionTag());
-    event.setNewEventId(cache.getInternalDistributedSystem());
-    return event;
+    return createEvent(cache, region, entry);
   }
 
   private EntryEventImpl createEventForPartitionedRegion(InternalCache cache, InternalRegion region,
       GatewaySender sender, Region.Entry entry) {
     EntryEventImpl event = createEvent(cache, region, entry);
-    event.setVersionTag(((EntrySnapshot) entry).getVersionTag());
-    event.setNewEventId(cache.getInternalDistributedSystem());
     BucketRegion bucketRegion = ((PartitionedRegion) event.getRegion()).getDataStore()
         .getLocalBucketById(event.getKeyInfo().getBucketId());
     if (bucketRegion == null) {
@@ -311,12 +318,19 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     return event;
   }
 
-  private EntryEventImpl createEvent(Cache cache, InternalRegion region,
+  private EntryEventImpl createEvent(InternalCache cache, InternalRegion region,
       Region.Entry entry) {
-    return new DefaultEntryEventFactory().create(region, Operation.UPDATE,
+    EntryEventImpl event = new DefaultEntryEventFactory().create(region, Operation.UPDATE,
         entry.getKey(),
         entry.getValue(), null, false,
-        ((InternalCache) cache).getInternalDistributedSystem().getDistributedMember());
+        (cache).getInternalDistributedSystem().getDistributedMember());
+    if (entry instanceof NonTXEntry) {
+      event.setVersionTag(((NonTXEntry) entry).getRegionEntry().getVersionStamp().asVersionTag());
+    } else {
+      event.setVersionTag(((EntrySnapshot) entry).getVersionTag());
+    }
+    event.setNewEventId(cache.getInternalDistributedSystem());
+    return event;
   }
 
   private List<Integer> getRemoteDsIds(Cache cache, Region region) {

@@ -14,7 +14,7 @@
  */
 package org.apache.geode.management.internal.cli.functions;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -36,8 +36,8 @@ public class ReplicateRegionFunctionTest {
 
   private ReplicateRegionFunction rrf;
   private long startTime;
-  private int batchSize = 25;
-  private int entries = batchSize;
+  private final int batchSize = 25;
+  private final int entries = batchSize;
   private Clock clockMock;
   private ReplicateRegionFunction.ThreadSleeper threadSleeperMock;
   private InternalCache cacheMock;
@@ -61,53 +61,70 @@ public class ReplicateRegionFunctionTest {
   }
 
   @Test
-  public void doActionsIfBatchReplicated_ReturnsFalseIfBatchIsIncomplete()
+  public void doActionsIfBatchReplicated_DoNothingIfBatchIsIncomplete()
       throws InterruptedException {
-    assertThat(rrf.doActionsIfBatchReplicated(cacheMock, startTime, 5, 20, 1L)).isFalse();
+    rrf.doActionsIfBatchReplicated(cacheMock, startTime, 5, 20, 1L);
+    verify(threadSleeperMock, never()).millis(anyLong());
     verify(threadsMonitoringMock, never()).updateThreadStatus();
   }
 
   @Test
-  public void doActionsIfBatchReplicated_ReturnsTrueIfBatchIsCompleteAndMaxRateIsZero()
+  public void doActionsIfBatchReplicated_DoNotSleepAndUpdateThreadStatusIfBatchIsCompleteAndMaxRateIsZero()
       throws InterruptedException {
-    assertThat(rrf.doActionsIfBatchReplicated(cacheMock, startTime, 20, 20, 0)).isTrue();
+    rrf.doActionsIfBatchReplicated(cacheMock, startTime, 20, 20, 0);
+    verify(threadSleeperMock, never()).millis(anyLong());
     verify(threadsMonitoringMock, times(1)).updateThreadStatus();
   }
 
   @Test
-  public void doActionsIfBatchReplicated_DoNotSleepIfElapsedTimeIsZero()
+  public void doActionsIfBatchReplicated_SleepAndUpdateThreadStatusIfElapsedTimeIsZero()
       throws InterruptedException {
     long maxRate = 100;
     long elapsedTime = 0L;
     long expectedMsToSleep = 250L;
     when(clockMock.millis()).thenReturn(startTime + elapsedTime);
-    assertThat(rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries, batchSize, maxRate))
-        .isTrue();
+    rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries, batchSize, maxRate);
     verify(threadSleeperMock, times(1)).millis(expectedMsToSleep);
     verify(threadsMonitoringMock, times(1)).updateThreadStatus();
   }
 
   @Test
-  public void doActionsIfBatchReplicated_DoNotSleepIfMaxRateNotReached()
+  public void doActionsIfBatchReplicated_DoNotSleepAndUpdateThreadStatusIfMaxRateNotReached()
       throws InterruptedException {
     long maxRate = 10000;
     long elapsedTime = 100L;
     when(clockMock.millis()).thenReturn(startTime + elapsedTime);
-    assertThat(rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries, batchSize, maxRate))
-        .isTrue();
-    verify(threadSleeperMock, times(0)).millis(anyLong());
+    rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries, batchSize, maxRate);
+    verify(threadSleeperMock, never()).millis(anyLong());
     verify(threadsMonitoringMock, times(1)).updateThreadStatus();
   }
 
   @Test
-  public void doActionsIfBatchReplicated_SleepIfMaxRateReached() throws InterruptedException {
+  public void doActionsIfBatchReplicated_SleepAndUpdateThreadStatusIfMaxRateReached()
+      throws InterruptedException {
     long maxRate = 100;
     long elapsedTime = 100L;
     long expectedMsToSleep = 150L;
     when(clockMock.millis()).thenReturn(startTime + elapsedTime);
-    assertThat(rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries, batchSize, maxRate))
-        .isTrue();
+    rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries, batchSize, maxRate);
     verify(threadSleeperMock, times(1)).millis(expectedMsToSleep);
     verify(threadsMonitoringMock, times(1)).updateThreadStatus();
+  }
+
+  @Test
+  public void doActionsIfBatchReplicated_ThrowInterruptedIfInterruptedAndBatchCompleted() {
+    long maxRate = 100;
+    Thread.currentThread().interrupt();
+    assertThatThrownBy(
+        () -> rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries, batchSize, maxRate))
+            .isInstanceOf(InterruptedException.class);
+  }
+
+  @Test
+  public void doActionsIfBatchReplicated_DoNotThrowInterruptedIfInterruptedAndBatchNotCompleted()
+      throws InterruptedException {
+    long maxRate = 100;
+    Thread.currentThread().interrupt();
+    rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries - 1, batchSize, maxRate);
   }
 }

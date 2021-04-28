@@ -194,12 +194,6 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
 
   private CliFunctionResult replicateRegion(FunctionContext<String[]> context, Region region,
       GatewaySender sender, long maxRate, int batchSize) {
-    int replicatedEntries = 0;
-    final InternalCache cache = (InternalCache) context.getCache();
-    final List<Integer> remoteDSIds = getRemoteDsIds(cache, region);
-
-    long batchStartTime = clock.millis();
-
     final Set<?> entries;
     if (region instanceof PartitionedRegion && sender.isParallel()) {
       entries =
@@ -210,26 +204,15 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
       entries = region.entrySet();
     }
 
+    final InternalCache cache = (InternalCache) context.getCache();
+    final List<Integer> remoteDSIds = getRemoteDsIds(cache, region);
+    int replicatedEntries = 0;
+    final long startTime = clock.millis();
     for (Object entry : entries) {
-      final EntryEventImpl event;
-      if (region instanceof PartitionedRegion) {
-        event = createEventForPartitionedRegion(cache, (InternalRegion) region, sender,
-            (Region.Entry) entry);
-      } else {
-        event =
-            createEventForDistributedRegion(cache, (InternalRegion) region, (Region.Entry) entry);
-      }
-      if (event == null) {
-        continue;
-      }
-      ((AbstractGatewaySender) sender).distribute(EnumListenerEvent.AFTER_UPDATE, event,
-          remoteDSIds, true);
-      replicatedEntries++;
       try {
-        if (doActionsIfBatchReplicated(cache, batchStartTime, replicatedEntries, batchSize,
-            maxRate)) {
-          batchStartTime = System.currentTimeMillis();
-        }
+        replicateEntry(cache, (InternalRegion) region, sender, (Region.Entry) entry,
+            replicatedEntries, batchSize, maxRate, startTime, remoteDSIds);
+        replicatedEntries++;
       } catch (InterruptedException e) {
         return new CliFunctionResult(context.getMemberName(), CliFunctionResult.StatusState.ERROR,
             "Operation canceled after having replicated " + replicatedEntries + " entries");
@@ -237,6 +220,20 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     }
     return new CliFunctionResult(context.getMemberName(), CliFunctionResult.StatusState.OK,
         "Entries replicated: " + replicatedEntries);
+  }
+
+  private void replicateEntry(InternalCache cache, InternalRegion region, GatewaySender sender,
+      Region.Entry entry, int replicatedEntries, int batchSize, long maxRate, long startTime,
+      List<Integer> remoteDSIds) throws InterruptedException {
+    final EntryEventImpl event;
+    if (region instanceof PartitionedRegion) {
+      event = createEventForPartitionedRegion(cache, region, entry);
+    } else {
+      event = createEventForDistributedRegion(cache, region, entry);
+    }
+    ((AbstractGatewaySender) sender).distribute(EnumListenerEvent.AFTER_UPDATE, event,
+        remoteDSIds, true);
+    doActionsIfBatchReplicated(cache, startTime, replicatedEntries, batchSize, maxRate);
   }
 
   final CliFunctionResult cancelReplicateRegion(FunctionContext<String[]> context, Region region,
@@ -268,34 +265,32 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
    * update the "alive" status of the thread so that it does not appear stuck and
    * adjust the rate of replication by sleeping if necessary.
    *
-   * @param startTime time at which the batch started to be processed
-   * @param entries number of entries replicated since the beginning of the batch processing
+   * @param startTime time at which the entries started to be replicated
+   * @param replicatedEntries number of entries replicated so far
    * @param batchSize size of the batch
    * @param maxRate maximum rate of replication
-   * @return true if complete batch was replicated. False otherwise.
    */
-  boolean doActionsIfBatchReplicated(InternalCache cache, long startTime, int entries,
+  void doActionsIfBatchReplicated(InternalCache cache, long startTime, int replicatedEntries,
       int batchSize, long maxRate)
       throws InterruptedException {
-    if (entries % batchSize != 0) {
-      return false;
+    if (replicatedEntries % batchSize != 0) {
+      return;
     }
     if (Thread.currentThread().isInterrupted()) {
       throw new InterruptedException();
     }
     cache.getDistributionManager().getThreadMonitoring().updateThreadStatus();
     if (maxRate == 0) {
-      return true;
+      return;
     }
     final long currTime = clock.millis();
     final long elapsedMs = currTime - startTime;
-    if (elapsedMs == 0 || batchSize * 1000L / elapsedMs > maxRate) {
-      final long targetElapsedMs = (batchSize * 1000L) / maxRate;
+    if (elapsedMs == 0 || replicatedEntries * 1000L / elapsedMs > maxRate) {
+      final long targetElapsedMs = (replicatedEntries * 1000L) / maxRate;
       final long sleepMs = targetElapsedMs - elapsedMs;
       logger.info("Sleeping for {} ms", sleepMs);
       threadSleeper.millis(sleepMs);
     }
-    return true;
   }
 
   private EntryEventImpl createEventForDistributedRegion(InternalCache cache, InternalRegion region,
@@ -304,15 +299,11 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
   }
 
   private EntryEventImpl createEventForPartitionedRegion(InternalCache cache, InternalRegion region,
-      GatewaySender sender, Region.Entry entry) {
+      Region.Entry entry) {
     EntryEventImpl event = createEvent(cache, region, entry);
     BucketRegion bucketRegion = ((PartitionedRegion) event.getRegion()).getDataStore()
         .getLocalBucketById(event.getKeyInfo().getBucketId());
-    if (bucketRegion == null) {
-      if (sender.isParallel()) {
-        return null;
-      }
-    } else {
+    if (bucketRegion != null) {
       bucketRegion.handleWANEvent(event);
     }
     return event;

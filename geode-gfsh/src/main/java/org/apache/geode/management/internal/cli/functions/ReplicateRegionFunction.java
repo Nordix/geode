@@ -211,8 +211,7 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     for (Object entry : entries) {
       try {
         replicateEntry(cache, (InternalRegion) region, sender, (Region.Entry) entry,
-            replicatedEntries, batchSize, maxRate, startTime, remoteDSIds);
-        replicatedEntries++;
+            replicatedEntries++, batchSize, maxRate, startTime, remoteDSIds);
       } catch (InterruptedException e) {
         return new CliFunctionResult(context.getMemberName(), CliFunctionResult.StatusState.ERROR,
             "Operation canceled after having replicated " + replicatedEntries + " entries");
@@ -233,7 +232,7 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     }
     ((AbstractGatewaySender) sender).distribute(EnumListenerEvent.AFTER_UPDATE, event,
         remoteDSIds, true);
-    doActionsIfBatchReplicated(cache, startTime, replicatedEntries, batchSize, maxRate);
+    doActionsIfBatchReplicated(cache, startTime, replicatedEntries + 1, batchSize, maxRate);
   }
 
   final CliFunctionResult cancelReplicateRegion(FunctionContext<String[]> context, Region region,

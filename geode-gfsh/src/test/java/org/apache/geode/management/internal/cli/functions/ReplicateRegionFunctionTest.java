@@ -14,7 +14,6 @@
  */
 package org.apache.geode.management.internal.cli.functions;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
@@ -68,7 +67,7 @@ public class ReplicateRegionFunctionTest {
   @Test
   public void doActionsIfBatchReplicated_DoNotSleepAndUpdateThreadStatusIfBatchIsCompleteAndMaxRateIsZero()
       throws InterruptedException {
-    rrf.doActionsIfBatchReplicated(cacheMock, startTime, 20, 20, 0);
+    rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries, batchSize, 0);
     verify(threadSleeperMock, never()).millis(anyLong());
     verify(cacheMock.getDistributionManager().getThreadMonitoring(), times(1)).updateThreadStatus();
   }
@@ -109,6 +108,38 @@ public class ReplicateRegionFunctionTest {
   }
 
   @Test
+  public void doActionsIfBatchReplicated_DoNotSleepAndUpdateThreadStatusIfReplicatedEntriesIsZero()
+      throws InterruptedException {
+    long maxRate = 100;
+    rrf.doActionsIfBatchReplicated(cacheMock, startTime, 0, batchSize, maxRate);
+    verify(threadSleeperMock, never()).millis(anyLong());
+    verify(cacheMock.getDistributionManager().getThreadMonitoring(), times(1)).updateThreadStatus();
+  }
+
+  @Test
+  public void doActionsIfBatchReplicated_SleepForZeroAndUpdateThreadStatusIfReplicatedEntriesIsZeroAndElapsedTimeIsZero()
+      throws InterruptedException {
+    long maxRate = 100;
+    long elapsedTime = 0L;
+    when(clockMock.millis()).thenReturn(startTime + elapsedTime);
+    rrf.doActionsIfBatchReplicated(cacheMock, startTime, 0, batchSize, maxRate);
+    verify(threadSleeperMock, times(1)).millis(0L);
+    verify(cacheMock.getDistributionManager().getThreadMonitoring(), times(1)).updateThreadStatus();
+  }
+
+  @Test
+  public void doActionsIfBatchReplicated_SleepAndUpdateThreadStatusIfMaxRateReachedReplicatedEntriesGreaterThanBatchSize()
+      throws InterruptedException {
+    long maxRate = 100;
+    long elapsedTime = 100L;
+    long expectedMsToSleep = 900;
+    when(clockMock.millis()).thenReturn(startTime + elapsedTime);
+    rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries * 4, batchSize, maxRate);
+    verify(threadSleeperMock, times(1)).millis(expectedMsToSleep);
+    verify(cacheMock.getDistributionManager().getThreadMonitoring(), times(1)).updateThreadStatus();
+  }
+
+  @Test
   public void doActionsIfBatchReplicated_ThrowInterruptedIfInterruptedAndBatchCompleted() {
     long maxRate = 100;
     Thread.currentThread().interrupt();
@@ -124,5 +155,4 @@ public class ReplicateRegionFunctionTest {
     Thread.currentThread().interrupt();
     rrf.doActionsIfBatchReplicated(cacheMock, startTime, entries - 1, batchSize, maxRate);
   }
-
 }

@@ -232,7 +232,7 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     }
     ((AbstractGatewaySender) sender).distribute(EnumListenerEvent.AFTER_UPDATE, event,
         remoteDSIds, true);
-    doActionsIfBatchReplicated(cache, startTime, replicatedEntries + 1, batchSize, maxRate);
+    doActionsIfBatchReplicated(startTime, replicatedEntries + 1, batchSize, maxRate);
   }
 
   final CliFunctionResult cancelReplicateRegion(FunctionContext<String[]> context, Region region,
@@ -261,7 +261,6 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
    * If a complete batch in the last cycle has not been replicated yet it returns false.
    * Otherwise, it returns true and runs the actions to be done when a batch has been
    * replicated: throw an interrupted exception if the operation was canceled and
-   * update the "alive" status of the thread so that it does not appear stuck and
    * adjust the rate of replication by sleeping if necessary.
    *
    * @param startTime time at which the entries started to be replicated
@@ -269,7 +268,7 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
    * @param batchSize size of the batch
    * @param maxRate maximum rate of replication
    */
-  void doActionsIfBatchReplicated(InternalCache cache, long startTime, int replicatedEntries,
+  void doActionsIfBatchReplicated(long startTime, int replicatedEntries,
       int batchSize, long maxRate)
       throws InterruptedException {
     if (replicatedEntries % batchSize != 0) {
@@ -278,7 +277,6 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     if (Thread.currentThread().isInterrupted()) {
       throw new InterruptedException();
     }
-    cache.getDistributionManager().getThreadMonitoring().updateThreadStatus();
     if (maxRate == 0) {
       return;
     }

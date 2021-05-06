@@ -210,8 +210,10 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     final long startTime = clock.millis();
     for (Object entry : entries) {
       try {
-        replicateEntry(cache, (InternalRegion) region, sender, (Region.Entry) entry,
-            replicatedEntries++, batchSize, maxRate, startTime, remoteDSIds);
+        if (replicateEntry(cache, (InternalRegion) region, sender, (Region.Entry) entry,
+            replicatedEntries, batchSize, maxRate, startTime, remoteDSIds)) {
+          replicatedEntries++;
+        }
       } catch (InterruptedException e) {
         return new CliFunctionResult(context.getMemberName(), CliFunctionResult.StatusState.ERROR,
             "Operation canceled after having replicated " + replicatedEntries + " entries");
@@ -221,18 +223,22 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
         "Entries replicated: " + replicatedEntries);
   }
 
-  private void replicateEntry(InternalCache cache, InternalRegion region, GatewaySender sender,
+  private boolean replicateEntry(InternalCache cache, InternalRegion region, GatewaySender sender,
       Region.Entry entry, int replicatedEntries, int batchSize, long maxRate, long startTime,
       List<Integer> remoteDSIds) throws InterruptedException {
     final EntryEventImpl event;
     if (region instanceof PartitionedRegion) {
-      event = createEventForPartitionedRegion(cache, region, entry);
+      event = createEventForPartitionedRegion(sender, cache, region, entry);
     } else {
-      event = createEventForDistributedRegion(cache, region, entry);
+      event = createEventForReplicatedRegion(cache, region, entry);
+    }
+    if (event == null) {
+      return false;
     }
     ((AbstractGatewaySender) sender).distribute(EnumListenerEvent.AFTER_UPDATE, event,
         remoteDSIds, true);
     doActionsIfBatchReplicated(startTime, replicatedEntries + 1, batchSize, maxRate);
+    return true;
   }
 
   final CliFunctionResult cancelReplicateRegion(FunctionContext<String[]> context, Region region,
@@ -290,16 +296,21 @@ public class ReplicateRegionFunction extends CliFunction<String[]> implements De
     }
   }
 
-  private EntryEventImpl createEventForDistributedRegion(InternalCache cache, InternalRegion region,
+  private EntryEventImpl createEventForReplicatedRegion(InternalCache cache, InternalRegion region,
       Region.Entry entry) {
     return createEvent(cache, region, entry);
   }
 
-  private EntryEventImpl createEventForPartitionedRegion(InternalCache cache, InternalRegion region,
+  private EntryEventImpl createEventForPartitionedRegion(GatewaySender sender, InternalCache cache,
+      InternalRegion region,
       Region.Entry entry) {
     EntryEventImpl event = createEvent(cache, region, entry);
     BucketRegion bucketRegion = ((PartitionedRegion) event.getRegion()).getDataStore()
         .getLocalBucketById(event.getKeyInfo().getBucketId());
+    if (bucketRegion != null && !bucketRegion.getBucketAdvisor().isPrimary()
+        && sender.isParallel()) {
+      return null;
+    }
     if (bucketRegion != null) {
       bucketRegion.handleWANEvent(event);
     }

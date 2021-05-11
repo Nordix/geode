@@ -58,7 +58,7 @@ public class BucketRegionQueue extends AbstractBucketRegionQueue {
 
   /**
    * The <code>Map</code> mapping the regionName->key to the queue key. This index allows fast
-   * updating of entries in the queue for conflation. This is necesaary for Colocated regions and if
+   * updating of entries in the queue for conflation. This is necessary for Colocated regions and if
    * any of the regions use same key for data.
    */
   private final Map indexes;
@@ -302,8 +302,20 @@ public class BucketRegionQueue extends AbstractBucketRegionQueue {
         latestIndexesForRegion = new ConcurrentHashMap();
         this.indexes.put(rName, latestIndexesForRegion);
       }
-      Long previousTailKey = (Long) latestIndexesForRegion.put(keyToConflate, tailKey);
+      Long previousTailKey = (Long) latestIndexesForRegion.get(keyToConflate);
       if (previousTailKey != null) {
+
+        GatewaySenderEventImpl previousEvent =
+            (GatewaySenderEventImpl) this.getRegion().get(previousTailKey);
+        if (previousEvent.getVersionTimeStamp() > ((GatewaySenderEventImpl) object)
+            .getVersionTimeStamp()) {
+          if (logger.isDebugEnabled()) {
+            logger.debug("{}: Not conflating {} due to {} has more recent timestamp", this, object,
+                previousEvent);
+          }
+          return;
+        }
+        latestIndexesForRegion.put(keyToConflate, tailKey);
         if (logger.isDebugEnabled()) {
           logger.debug("{}: Conflating {} at queue index={} and previousTailKey={} ", this, object,
               tailKey, previousTailKey);
@@ -318,6 +330,7 @@ public class BucketRegionQueue extends AbstractBucketRegionQueue {
         // ParallelGatewaySenderQueue takes care of maintaining a thread pool.
         queue.conflateEvent(conflatableObject, getId(), previousTailKey);
       } else {
+        latestIndexesForRegion.put(keyToConflate, tailKey);
         region.getParallelGatewaySender().getStatistics().incConflationIndexesMapSize();
       }
     } else {

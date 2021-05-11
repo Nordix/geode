@@ -44,6 +44,8 @@ import org.apache.geode.internal.cache.GemFireCacheImpl;
 import org.apache.geode.internal.cache.KeyInfo;
 import org.apache.geode.internal.cache.LocalRegion;
 import org.apache.geode.internal.cache.ha.ThreadIdentifier;
+import org.apache.geode.internal.cache.versions.VMVersionTag;
+import org.apache.geode.internal.cache.versions.VersionTag;
 import org.apache.geode.internal.cache.wan.AbstractGatewaySender;
 import org.apache.geode.internal.cache.wan.GatewaySenderEventImpl;
 import org.apache.geode.internal.cache.wan.GatewaySenderStats;
@@ -342,6 +344,45 @@ public class SerialGatewaySenderEventProcessorJUnitTest {
     assertThat(originalEvents).isEqualTo(conflatedEvents);
   }
 
+  @Test
+  public void testConflationDiscardsEventWithOlderTimestamp() throws Exception {
+
+    LocalRegion lr = mock(LocalRegion.class);
+    when(lr.getFullPath()).thenReturn(SEPARATOR + "dataStoreRegion");
+    when(lr.getCache()).thenReturn(this.cache);
+
+    when(this.sender.isBatchConflationEnabled()).thenReturn(true);
+    when(sender.getStatistics()).thenReturn(mock(GatewaySenderStats.class));
+
+    List<GatewaySenderEventImpl> originalEvents = new ArrayList<>();
+    long present = System.currentTimeMillis();
+    GatewaySenderEventImpl event1 =
+        createGatewaySenderEventWithVersionTag(lr, Operation.CREATE, "key", "1", 6, 0, present);
+    GatewaySenderEventImpl event2 =
+        createGatewaySenderEventWithVersionTag(lr, Operation.UPDATE, "key", "2", 6, 0, present + 1);
+    GatewaySenderEventImpl event3 =
+        createGatewaySenderEventWithVersionTag(lr, Operation.UPDATE, "key", "3", 6, 0, present + 2);
+    GatewaySenderEventImpl event4 =
+        createGatewaySenderEventWithVersionTag(lr, Operation.UPDATE, "key", "4", 6, 0, present + 3);
+
+    // Add unordered events
+    originalEvents.add(event1);
+    originalEvents.add(event2);
+    originalEvents.add(event4);
+    originalEvents.add(event3);
+
+    List<GatewaySenderEventImpl> expectedEvents = new ArrayList<>();
+    expectedEvents.add(event1);
+    expectedEvents.add(event4);
+
+    // Conflate the batch of event
+    List<GatewaySenderEventImpl> conflatedEvents = processor.conflate(originalEvents);
+
+    // Assert conflation discarded older event
+    assertThat(conflatedEvents.size()).isEqualTo(2);
+    assertThat(conflatedEvents).isEqualTo(expectedEvents);
+  }
+
   private void logEvents(String message, List<GatewaySenderEventImpl> events) {
     StringBuilder builder = new StringBuilder();
     builder.append("The list contains the following ").append(events.size()).append(" ")
@@ -355,12 +396,33 @@ public class SerialGatewaySenderEventProcessorJUnitTest {
   private GatewaySenderEventImpl createGatewaySenderEvent(LocalRegion lr, Operation operation,
       Object key, Object value, long threadId, long sequenceId)
       throws Exception {
+    return createGatewaySenderEventWithVersionTag(lr, operation, key, value, threadId, sequenceId,
+        0L);
+  }
+
+  private GatewaySenderEventImpl createGatewaySenderEventWithVersionTag(LocalRegion lr,
+      Operation operation,
+      Object key, Object value, long threadId, long sequenceId, long timestamp)
+      throws Exception {
     when(lr.getKeyInfo(key, value, null)).thenReturn(new KeyInfo(key, null, null));
     EntryEventImpl eei = EntryEventImpl.create(lr, operation, key, value, null, false, null);
+    if (timestamp != 0L) {
+      eei.setVersionTag(createVersionTag(sequenceId, timestamp));
+    }
     eei.setEventId(new EventID(new byte[16], threadId, sequenceId));
     GatewaySenderEventImpl gsei =
         new GatewaySenderEventImpl(getEnumListenerEvent(operation), eei, null, true, false);
     return gsei;
+  }
+
+  private VersionTag createVersionTag(long sequenceId, long timestamp) {
+    VMVersionTag vmVersionTag = new VMVersionTag();
+    assertThat(vmVersionTag.hasValidVersion()).isFalse();
+    vmVersionTag.setEntryVersion((int) sequenceId);
+    vmVersionTag.setRegionVersion(100L);
+    vmVersionTag.setVersionTimeStamp(timestamp);
+    assertThat(vmVersionTag.hasValidVersion()).isTrue();
+    return vmVersionTag;
   }
 
   private EnumListenerEvent getEnumListenerEvent(Operation operation) {

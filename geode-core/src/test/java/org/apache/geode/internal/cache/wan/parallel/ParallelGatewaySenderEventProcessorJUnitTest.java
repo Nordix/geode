@@ -44,7 +44,7 @@ public class ParallelGatewaySenderEventProcessorJUnitTest {
   private AbstractGatewaySender sender;
 
   @Before
-  public void setUpGemFire() {
+  public void setupCluster() {
     createCache();
     createGatewaySender();
   }
@@ -287,6 +287,53 @@ public class ParallelGatewaySenderEventProcessorJUnitTest {
     assertThat(originalEvents).isEqualTo(conflatedEvents);
   }
 
+  @Test
+  public void testConflationDiscardsEventWithOlderTimestamp() throws Exception {
+
+    LocalRegion lr = mock(LocalRegion.class);
+    when(lr.getFullPath()).thenReturn(SEPARATOR + "dataStoreRegion");
+    when(lr.getCache()).thenReturn(this.cache);
+
+    when(this.sender.isBatchConflationEnabled()).thenReturn(true);
+    when(sender.getStatistics()).thenReturn(mock(GatewaySenderStats.class));
+
+    // Create a ParallelGatewaySenderEventProcessor
+    AbstractGatewaySenderEventProcessor processor =
+        ParallelGatewaySenderHelper.createParallelGatewaySenderEventProcessor(this.sender);
+
+    List<GatewaySenderEventImpl> originalEvents = new ArrayList<>();
+    long present = System.currentTimeMillis();
+    GatewaySenderEventImpl event1 =
+        ParallelGatewaySenderHelper.createGatewaySenderEventWithVersionTag(lr, Operation.CREATE,
+            "key", "1", 6, 0, 0, 0, present);
+    GatewaySenderEventImpl event2 =
+        ParallelGatewaySenderHelper.createGatewaySenderEventWithVersionTag(lr, Operation.UPDATE,
+            "key", "2", 6, 0, 0, 0, present + 1);
+    GatewaySenderEventImpl event3 =
+        ParallelGatewaySenderHelper.createGatewaySenderEventWithVersionTag(lr, Operation.UPDATE,
+            "key", "3", 6, 0, 0, 0, present + 2);
+    GatewaySenderEventImpl event4 =
+        ParallelGatewaySenderHelper.createGatewaySenderEventWithVersionTag(lr, Operation.UPDATE,
+            "key", "4", 6, 0, 0, 0, present + 3);
+
+    // Add unordered events
+    originalEvents.add(event1);
+    originalEvents.add(event2);
+    originalEvents.add(event4);
+    originalEvents.add(event3);
+
+    List<GatewaySenderEventImpl> expectedEvents = new ArrayList<>();
+    expectedEvents.add(event1);
+    expectedEvents.add(event4);
+
+    // Conflate the batch of event
+    List<GatewaySenderEventImpl> conflatedEvents = processor.conflate(originalEvents);
+
+    // Assert conflation discarded older event
+    assertThat(conflatedEvents.size()).isEqualTo(2);
+    assertThat(conflatedEvents).isEqualTo(expectedEvents);
+  }
+
   private void logEvents(String message, List<GatewaySenderEventImpl> events) {
     StringBuilder builder = new StringBuilder();
     builder.append("The list contains the following ").append(events.size()).append(" ")
@@ -296,4 +343,7 @@ public class ParallelGatewaySenderEventProcessorJUnitTest {
     }
     System.out.println(builder);
   }
+
+
+
 }

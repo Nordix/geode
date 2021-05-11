@@ -448,7 +448,7 @@ public abstract class AbstractGatewaySenderEventProcessor extends LoggingThread
     List<GatewaySenderEventImpl> events = null;
     // list of the above peeked events which are filtered through the filters attached
     List<GatewaySenderEventImpl> filteredList = new ArrayList<GatewaySenderEventImpl>();
-    // list of the PDX events which are peeked from pDX region and needs to go acrossthe site
+    // list of the PDX events which are peeked from pDX region and needs to go across the site
     List<GatewaySenderEventImpl> pdxEventsToBeDispatched = new ArrayList<GatewaySenderEventImpl>();
     // list of filteredList + pdxEventsToBeDispatched events
     List<GatewaySenderEventImpl> eventsToBeDispatched = new ArrayList<GatewaySenderEventImpl>();
@@ -805,7 +805,7 @@ public abstract class AbstractGatewaySenderEventProcessor extends LoggingThread
   public List conflate(List<GatewaySenderEventImpl> events) {
     List<GatewaySenderEventImpl> conflatedEvents = null;
     // Conflate the batch if necessary
-    if (this.sender.isBatchConflationEnabled() && events.size() > 1) {
+    if (getSender().isBatchConflationEnabled() && events.size() > 1) {
       if (logger.isDebugEnabled()) {
         logEvents("original", events);
       }
@@ -822,13 +822,18 @@ public abstract class AbstractGatewaySenderEventProcessor extends LoggingThread
 
           // Get the entry at that key
           GatewaySenderEventImpl existingEvent = conflatedEventsMap.get(key);
-          if (!gsEvent.equals(existingEvent)) {
+          if (existingEvent == null) {
+            conflatedEventsMap.put(key, gsEvent);
+          } else if (!gsEvent.equals(existingEvent)
+              && gsEvent.getVersionTimeStamp() >= existingEvent.getVersionTimeStamp()) {
             // Attempt to remove the key. If the entry is removed, that means a
             // duplicate key was found. If not, this is a no-op.
             conflatedEventsMap.remove(key);
 
             // Add the key to the end of the map.
             conflatedEventsMap.put(key, gsEvent);
+          } else if (logger.isDebugEnabled()) {
+            logger.debug("Not conflating event " + gsEvent + " due to a more recent event found.");
           }
         } else {
           // The event should not be conflated (create or destroy). Add it to
@@ -845,7 +850,7 @@ public abstract class AbstractGatewaySenderEventProcessor extends LoggingThread
       }
 
       // Increment the events conflated from batches statistic
-      this.sender.getStatistics()
+      getSender().getStatistics()
           .incEventsConflatedFromBatches(events.size() - conflatedEvents.size());
       if (logger.isDebugEnabled()) {
         logEvents("conflated", conflatedEvents);

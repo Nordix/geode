@@ -16,6 +16,7 @@ package org.apache.geode.internal.cache.wan.parallel;
 
 import static org.apache.geode.cache.Region.SEPARATOR;
 import static org.apache.geode.internal.statistics.StatisticsClockFactory.disabledClock;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -54,6 +55,8 @@ import org.apache.geode.internal.cache.RegionQueue;
 import org.apache.geode.internal.cache.eviction.AbstractEvictionController;
 import org.apache.geode.internal.cache.eviction.EvictionController;
 import org.apache.geode.internal.cache.partitioned.RegionAdvisor;
+import org.apache.geode.internal.cache.versions.VMVersionTag;
+import org.apache.geode.internal.cache.versions.VersionTag;
 import org.apache.geode.internal.cache.wan.AbstractGatewaySender;
 import org.apache.geode.internal.cache.wan.GatewaySenderEventImpl;
 
@@ -89,14 +92,36 @@ public class ParallelGatewaySenderHelper {
   public static GatewaySenderEventImpl createGatewaySenderEvent(LocalRegion lr, Operation operation,
       Object key, Object value, long threadId, long sequenceId, int bucketId, long shadowKey)
       throws Exception {
+    return createGatewaySenderEventWithVersionTag(lr, operation, key, value, threadId, sequenceId,
+        bucketId, shadowKey, 0L);
+  }
+
+  public static GatewaySenderEventImpl createGatewaySenderEventWithVersionTag(LocalRegion lr,
+      Operation operation,
+      Object key, Object value, long threadId, long sequenceId, int bucketId, long shadowKey,
+      long timestamp)
+      throws Exception {
     when(lr.getKeyInfo(key, value, null)).thenReturn(new KeyInfo(key, null, null));
     EntryEventImpl eei = EntryEventImpl.create(lr, operation, key, value, null, false, null);
+    if (timestamp != 0L) {
+      eei.setVersionTag(createVersionTag(sequenceId, timestamp));
+    }
     eei.setEventId(new EventID(new byte[16], threadId, sequenceId, bucketId));
     GatewaySenderEventImpl gsei =
         new GatewaySenderEventImpl(getEnumListenerEvent(operation), eei, null, true, bucketId,
             false);
     gsei.setShadowKey(shadowKey);
     return gsei;
+  }
+
+  private static VersionTag createVersionTag(long sequenceId, long timestamp) {
+    VMVersionTag vmVersionTag = new VMVersionTag();
+    assertThat(vmVersionTag.hasValidVersion()).isFalse();
+    vmVersionTag.setEntryVersion((int) sequenceId);
+    vmVersionTag.setRegionVersion(100L);
+    vmVersionTag.setVersionTimeStamp(timestamp);
+    assertThat(vmVersionTag.hasValidVersion()).isTrue();
+    return vmVersionTag;
   }
 
   public static PartitionedRegion createMockQueueRegion(GemFireCacheImpl cache, String regionName) {

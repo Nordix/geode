@@ -1447,8 +1447,9 @@ public class CliStrings {
   public static final String REPLICATE_REGION__MSG__REGION__NOT__FOUND = "Region {0} not found";
   public static final String REPLICATE_REGION__MSG__SENDER__NOT__FOUND = "Sender {0} not found";
   public static final String REPLICATE_REGION__MSG__SENDER__SERIAL__AND__NOT__PRIMARY =
-      "Sender is serial and not primary. 0 entries replicated.";
-  public static final String REPLICATE_REGION__MSG__SENDER__NOT__RUNNING = "Sender not running";
+      "Sender {0} is serial and not primary. 0 entries replicated.";
+  public static final String REPLICATE_REGION__MSG__SENDER__NOT__RUNNING =
+      "Sender {0} is not running";
   public static final String REPLICATE_REGION__MSG__EXECUTION__CANCELED = "Execution canceled";
   public static final String REPLICATE_REGION__MSG__EXECUTION__FAILED =
       "Execution failed. Error: {0}";

@@ -15,6 +15,8 @@
 package org.apache.geode.management.internal.cli.functions;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -28,6 +30,13 @@ import java.time.Clock;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.apache.geode.cache.Region;
+import org.apache.geode.cache.execute.FunctionContext;
+import org.apache.geode.cache.wan.GatewaySender;
+import org.apache.geode.internal.cache.InternalCache;
+import org.apache.geode.internal.cache.wan.InternalGatewaySender;
+import org.apache.geode.management.internal.functions.CliFunctionResult;
+
 public class ReplicateRegionFunctionTest {
 
   private ReplicateRegionFunction rrf;
@@ -35,12 +44,22 @@ public class ReplicateRegionFunctionTest {
   private final int entries = 25;
   private Clock clockMock;
   private ReplicateRegionFunction.ThreadSleeper threadSleeperMock;
+  private InternalCache internalCacheMock;
+  private GatewaySender gatewaySenderMock;
+
+  @SuppressWarnings("unchecked")
+  private FunctionContext<Object[]> contextMock = mock(FunctionContext.class);
+
+  @SuppressWarnings("unchecked")
+  private Region<Object, Object> regionMock = mock(Region.class);
 
   @Before
   public void setUp() throws InterruptedException {
     clockMock = mock(Clock.class);
     threadSleeperMock = mock(ReplicateRegionFunction.ThreadSleeper.class);
     doNothing().when(threadSleeperMock).millis(anyLong());
+    internalCacheMock = mock(InternalCache.class);
+    gatewaySenderMock = mock(InternalGatewaySender.class);
     rrf = new ReplicateRegionFunction();
     rrf.setClock(clockMock);
     rrf.setThreadSleeper(threadSleeperMock);
@@ -118,6 +137,60 @@ public class ReplicateRegionFunctionTest {
     assertThatThrownBy(
         () -> rrf.doPostSendBatchActions(startTime, entries, maxRate))
             .isInstanceOf(InterruptedException.class);
+  }
+
+
+
+  @Test
+  public void executeFunction_verifyOutputWhenRegionNotFound() {
+    Object[] options = new Object[] {"myRegion", "mySender", false, 1L, 10};
+    when(internalCacheMock.getRegion(any())).thenReturn(null);
+    when(contextMock.getArguments()).thenReturn(options);
+    when(contextMock.getCache()).thenReturn(internalCacheMock);
+    CliFunctionResult result = rrf.executeFunction(contextMock);
+    assertThat(result.getStatus()).isEqualTo(CliFunctionResult.StatusState.ERROR.toString());
+    assertThat(result.getStatusMessage()).isEqualTo("Region myRegion not found");
+  }
+
+  @Test
+  public void executeFunction_verifyOutputWhenSenderNotFound() {
+    Object[] options = new Object[] {"myRegion", "mySender", false, 1L, 10};
+    when(internalCacheMock.getRegion(any())).thenReturn(regionMock);
+    when(internalCacheMock.getGatewaySender(any())).thenReturn(null);
+    when(contextMock.getArguments()).thenReturn(options);
+    when(contextMock.getCache()).thenReturn(internalCacheMock);
+    CliFunctionResult result = rrf.executeFunction(contextMock);
+    assertThat(result.getStatus()).isEqualTo(CliFunctionResult.StatusState.ERROR.toString());
+    assertThat(result.getStatusMessage()).isEqualTo("Sender mySender not found");
+  }
+
+  @Test
+  public void executeFunction_verifyOutputWhenSenderIsNotRunning() {
+    Object[] options = new Object[] {"myRegion", "mySender", false, 1L, 10};
+    when(gatewaySenderMock.isRunning()).thenReturn(false);
+    when(internalCacheMock.getRegion(any())).thenReturn(regionMock);
+    when(internalCacheMock.getGatewaySender(any())).thenReturn(gatewaySenderMock);
+    when(contextMock.getArguments()).thenReturn(options);
+    when(contextMock.getCache()).thenReturn(internalCacheMock);
+    CliFunctionResult result = rrf.executeFunction(contextMock);
+    assertThat(result.getStatus()).isEqualTo(CliFunctionResult.StatusState.ERROR.toString());
+    assertThat(result.getStatusMessage()).isEqualTo("Sender mySender is not running");
+  }
+
+  @Test
+  public void executeFunction_verifyOutputWhenSenderIsSerialAndSenderIsNotPrimary() {
+    Object[] options = new Object[] {"myRegion", "mySender", false, 1L, 10};
+    when(gatewaySenderMock.isRunning()).thenReturn(true);
+    when(gatewaySenderMock.isParallel()).thenReturn(false);
+    when(((InternalGatewaySender) gatewaySenderMock).isPrimary()).thenReturn(false);
+    when(internalCacheMock.getRegion(any())).thenReturn(regionMock);
+    when(internalCacheMock.getGatewaySender(any())).thenReturn(gatewaySenderMock);
+    when(contextMock.getArguments()).thenReturn(options);
+    when(contextMock.getCache()).thenReturn(internalCacheMock);
+    CliFunctionResult result = rrf.executeFunction(contextMock);
+    assertThat(result.getStatus()).isEqualTo(CliFunctionResult.StatusState.OK.toString());
+    assertThat(result.getStatusMessage())
+        .isEqualTo("Sender mySender is serial and not primary. 0 entries replicated.");
   }
 
 }

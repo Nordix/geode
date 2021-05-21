@@ -212,11 +212,14 @@ public class ReplicateRegionFunction extends CliFunction<Object[]> implements De
     }
   }
 
-  private CliFunctionResult replicateRegion(FunctionContext<Object[]> context, Region region,
+  @VisibleForTesting
+  CliFunctionResult replicateRegion(FunctionContext<Object[]> context, Region region,
       GatewaySender sender, long maxRate, int batchSize) {
     Connection connection = null;
     PoolImpl senderPool = null;
     int replicatedEntries = 0;
+
+
     try {
       senderPool = ((AbstractGatewaySender) sender).getProxy();
       if (senderPool == null) {
@@ -245,7 +248,7 @@ public class ReplicateRegionFunction extends CliFunction<Object[]> implements De
         } catch (BatchException70 e) {
           return new CliFunctionResult(context.getMemberName(), CliFunctionResult.StatusState.ERROR,
               CliStrings.format(CliStrings.REPLICATE_REGION__MSG__ERROR__AFTER__HAVING__REPLICATED,
-                  replicatedEntries));
+                  e.getMessage(), replicatedEntries));
         }
         try {
           doPostSendBatchActions(startTime, replicatedEntries, maxRate);
@@ -268,7 +271,7 @@ public class ReplicateRegionFunction extends CliFunction<Object[]> implements De
             replicatedEntries));
   }
 
-  private List<GatewayQueueEvent> createBatch(InternalRegion region, GatewaySender sender,
+  List<GatewayQueueEvent> createBatch(InternalRegion region, GatewaySender sender,
       int batchSize, InternalCache cache, Iterator<?> iter) {
     int batchIndex = 0;
     List<GatewayQueueEvent> batch = new ArrayList<>();
@@ -283,7 +286,7 @@ public class ReplicateRegionFunction extends CliFunction<Object[]> implements De
     return batch;
   }
 
-  private Set<?> getEntries(Region region, GatewaySender sender) {
+  Set<?> getEntries(Region region, GatewaySender sender) {
     if (region instanceof PartitionedRegion && sender.isParallel()) {
       return ((PartitionedRegion) region).getDataStore().getAllLocalBucketRegions()
           .stream()

@@ -1432,13 +1432,13 @@ public class CliStrings {
   public static final String REPLICATE_REGION__REGION = "region";
   public static final String REPLICATE_REGION__REGION__HELP =
       "Region from which data will be exported.";
-  public static final String REPLICATE_REGION__SENDERID = "senderId";
+  public static final String REPLICATE_REGION__SENDERID = "sender-id";
   public static final String REPLICATE_REGION__SENDERID__HELP =
       "senderId to use to replicate the region.";
-  public static final String REPLICATE_REGION__MAXRATE = "maxrate";
+  public static final String REPLICATE_REGION__MAXRATE = "max-rate";
   public static final String REPLICATE_REGION__MAXRATE__HELP =
       "maximum rate for replication in events per second.";
-  public static final String REPLICATE_REGION__BATCHSIZE = "batchSize";
+  public static final String REPLICATE_REGION__BATCHSIZE = "batch-size";
   public static final String REPLICATE_REGION__BATCHSIZE__HELP =
       "size for batches or events to be replicated.";
   public static final String REPLICATE_REGION__CANCEL = "cancel";

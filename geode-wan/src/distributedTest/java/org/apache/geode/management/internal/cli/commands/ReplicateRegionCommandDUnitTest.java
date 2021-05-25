@@ -23,6 +23,7 @@ import static org.apache.geode.management.internal.i18n.CliStrings.REPLICATE_REG
 import static org.apache.geode.management.internal.i18n.CliStrings.REPLICATE_REGION__MAXRATE;
 import static org.apache.geode.management.internal.i18n.CliStrings.REPLICATE_REGION__MSG__CANCELED__AFTER__HAVING__REPLICATED;
 import static org.apache.geode.management.internal.i18n.CliStrings.REPLICATE_REGION__MSG__EXECUTION__CANCELED;
+import static org.apache.geode.management.internal.i18n.CliStrings.REPLICATE_REGION__MSG__EXECUTION__FAILED;
 import static org.apache.geode.management.internal.i18n.CliStrings.REPLICATE_REGION__MSG__NO__RUNNING__COMMAND;
 import static org.apache.geode.management.internal.i18n.CliStrings.REPLICATE_REGION__REGION;
 import static org.apache.geode.management.internal.i18n.CliStrings.REPLICATE_REGION__SENDERID;
@@ -37,6 +38,7 @@ import java.util.concurrent.FutureTask;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
+import org.assertj.core.api.Condition;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -93,14 +95,8 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
         .getCommandString();
 
     // Check command status and output
-    CommandResultAssert replicateRegionCommand = gfsh.executeAndAssertThat(command).statusIsError();
-    replicateRegionCommand.hasTableSection().hasColumns().hasSize(3);
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Member")
-        .hasSize(3);
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Status")
-        .containsExactly("ERROR", "ERROR", "ERROR");
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
-        .hasSize(3);
+    CommandResultAssert replicateRegionCommand =
+        executeCommandAndVerifyStatusIsError(gfsh, command);
     String message =
         CliStrings.format(CliStrings.REPLICATE_REGION__MSG__REGION__NOT__FOUND,
             Region.SEPARATOR + regionName);
@@ -134,14 +130,8 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
         .getCommandString();
 
     // Check command status and output
-    CommandResultAssert replicateRegionCommand = gfsh.executeAndAssertThat(command).statusIsError();
-    replicateRegionCommand.hasTableSection().hasColumns().hasSize(3);
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Member")
-        .hasSize(3);
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Status")
-        .containsExactly("ERROR", "ERROR", "ERROR");
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
-        .hasSize(3);
+    CommandResultAssert replicateRegionCommand =
+        executeCommandAndVerifyStatusIsError(gfsh, command);
     String message =
         CliStrings.format(CliStrings.REPLICATE_REGION__MSG__SENDER__NOT__FOUND, senderIdInA);
     replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
@@ -220,6 +210,90 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
     testUnsuccessfulCancelReplicateRegionCommandInvocation(true, true);
   }
 
+  @Test
+  public void testUnsuccessfulExecutionDueToSenderWentDown() throws Exception {
+    testUnsuccessfulExecutionDueToSenderOrReceiverWentDown(true);
+  }
+
+  @Test
+  public void testUnsuccessfulExecutionDueToReceiverWentDown() throws Exception {
+    testUnsuccessfulExecutionDueToSenderOrReceiverWentDown(false);
+  }
+
+  public void testUnsuccessfulExecutionDueToSenderOrReceiverWentDown(boolean stopSender)
+      throws Exception {
+    List<VM> serversInA = Arrays.asList(vm5, vm6, vm7);
+    VM serverInB = vm3;
+    VM serverInC = vm4;
+    VM client = vm8;
+    String senderIdInA = "B";
+    String senderIdInB = "C";
+
+    Integer senderLocatorPort = create3WanSitesAndClient(true, vm0,
+        vm1, vm2, serversInA, serverInB, serverInC, client,
+        senderIdInA, senderIdInB);
+
+    int replicateRegionBatchSize = 20;
+    int entries = 20000;
+    Set<Long> keySet = LongStream.range(0L, entries).boxed().collect(Collectors.toSet());
+    String regionName = getRegionName(true);
+    // Put entries
+    client.invoke(() -> WANTestBase.doClientPutsFrom(regionName, 0, entries));
+
+
+    // Check that entries are put in the region
+    for (VM member : serversInA) {
+      member.invoke(() -> WANTestBase.validateRegionSize(regionName, entries));
+    }
+
+    // Create senders and receivers with replication as follows: "A" -> "B" -> "C"
+    createSenders(true, serversInA, serverInB,
+        senderIdInA, senderIdInB);
+    createReceivers(serverInB, serverInC);
+
+    // Execute replicate region command
+    GfshCommandRule gfsh = new GfshCommandRule();
+    gfsh.connectAndVerify(senderLocatorPort, GfshCommandRule.PortType.locator);
+    String command = new CommandStringBuilder(REPLICATE_REGION)
+        .addOption(REPLICATE_REGION__REGION, regionName)
+        .addOption(REPLICATE_REGION__SENDERID, senderIdInA)
+        .addOption(REPLICATE_REGION__BATCHSIZE, String.valueOf(replicateRegionBatchSize))
+        .getCommandString();
+
+    executeCommandAndVerifyStatusIsOk(gfsh, command);
+
+    if (stopSender) {
+      vm6.invoke(() -> stopSender(senderIdInA));
+
+      CommandResultAssert replicateRegionCommand =
+          gfsh.executeAndAssertThat(command).statusIsSuccess();
+      replicateRegionCommand.hasTableSection().hasColumns().hasSize(3);
+      replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Member")
+          .hasSize(3);
+      replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
+          .hasSize(3);
+      replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Status")
+          .containsExactlyInAnyOrder("OK", "OK", "ERROR");
+      Condition<String> startsWithError = new Condition<String>(
+          s -> s.equals("Sender " + senderIdInA + " is not running"), "sender is not running");
+      Condition<String> haveEntriesReplicated =
+          new Condition<String>(s -> s.startsWith("Entries replicated:"), "entries replicated");
+      replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
+          .asList().haveExactly(1, startsWithError).haveExactly(2, haveEntriesReplicated);
+
+    } else {
+      serverInB.invoke(() -> stopReceivers());
+
+      CommandResultAssert replicateRegionCommand =
+          executeCommandAndVerifyStatusIsError(gfsh, command);
+      replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
+          .asList()
+          .allMatch(s -> s.startsWith(CliStrings.format(REPLICATE_REGION__MSG__EXECUTION__FAILED,
+              "")));
+    }
+  }
+
+
   /**
    * Scenario with 3 WAN sites: "A", "B" and "C".
    * Initially, no replication is configured between sites.
@@ -289,15 +363,7 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
         .getCommandString();
 
     // Check command status and output
-    CommandResultAssert replicateRegionCommand =
-        gfsh.executeAndAssertThat(command).statusIsSuccess();
-    replicateRegionCommand.hasTableSection().hasColumns().hasSize(3);
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Member")
-        .hasSize(3);
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Status")
-        .containsExactly("OK", "OK", "OK");
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
-        .hasSize(3);
+    CommandResultAssert replicateRegionCommand = executeCommandAndVerifyStatusIsOk(gfsh, command);
     if (isPartitionedRegion && isParallelGatewaySender) {
       String msg1 = CliStrings.format(CliStrings.REPLICATE_REGION__MSG__REPLICATED__ENTRIES, 33);
       String msg2 = CliStrings.format(CliStrings.REPLICATE_REGION__MSG__REPLICATED__ENTRIES, 34);
@@ -396,15 +462,7 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
         client.invokeAsync(() -> sendRandomOpsFromClient(regionName, keySet, 10));
 
     // Check command status and output
-    CommandResultAssert replicateRegionCommand =
-        gfsh.executeAndAssertThat(command).statusIsSuccess();
-    replicateRegionCommand.hasTableSection().hasColumns().hasSize(3);
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Member")
-        .hasSize(3);
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Status")
-        .containsExactly("OK", "OK", "OK");
-    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
-        .hasSize(3);
+    executeCommandAndVerifyStatusIsOk(gfsh, command);
 
     // Wait for random operations to finish
     asyncOps1.await();
@@ -452,16 +510,7 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
         .addOption(REPLICATE_REGION__CANCEL)
         .getCommandString();
     CommandResultAssert cancelCommandResult =
-        gfsh.executeAndAssertThat(cancelCommand).statusIsError();
-
-    // Check cancel command output
-    cancelCommandResult.hasTableSection().hasColumns().hasSize(3);
-    cancelCommandResult.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Member")
-        .hasSize(3);
-    cancelCommandResult.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
-        .hasSize(3);
-    cancelCommandResult.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Status")
-        .containsExactly("ERROR", "ERROR", "ERROR");
+        executeCommandAndVerifyStatusIsError(gfsh, cancelCommand);
     String msg1 = CliStrings.format(REPLICATE_REGION__MSG__NO__RUNNING__COMMAND,
         Region.SEPARATOR + regionName, senderIdInA);
     cancelCommandResult.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
@@ -697,5 +746,32 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
         }
       }
     }
+  }
+
+  public CommandResultAssert executeCommandAndVerifyStatusIsOk(GfshCommandRule gfsh,
+      String command) {
+    CommandResultAssert replicateRegionCommand =
+        gfsh.executeAndAssertThat(command).statusIsSuccess();
+    replicateRegionCommand.hasTableSection().hasColumns().hasSize(3);
+    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Member")
+        .hasSize(3);
+    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Status")
+        .containsExactly("OK", "OK", "OK");
+    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
+        .hasSize(3);
+    return replicateRegionCommand;
+  }
+
+  public CommandResultAssert executeCommandAndVerifyStatusIsError(GfshCommandRule gfsh,
+      String command) {
+    CommandResultAssert replicateRegionCommand = gfsh.executeAndAssertThat(command).statusIsError();
+    replicateRegionCommand.hasTableSection().hasColumns().hasSize(3);
+    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Member")
+        .hasSize(3);
+    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Message")
+        .hasSize(3);
+    replicateRegionCommand.hasTableSection(ResultModel.MEMBER_STATUS_SECTION).hasColumn("Status")
+        .containsExactly("ERROR", "ERROR", "ERROR");
+    return replicateRegionCommand;
   }
 }

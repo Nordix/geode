@@ -47,6 +47,7 @@ import org.apache.geode.cache.client.internal.pooling.PooledConnection;
 import org.apache.geode.cache.execute.FunctionContext;
 import org.apache.geode.cache.wan.GatewayQueueEvent;
 import org.apache.geode.cache.wan.GatewaySender;
+import org.apache.geode.distributed.DistributedSystemDisconnectedException;
 import org.apache.geode.internal.cache.BucketRegion;
 import org.apache.geode.internal.cache.DefaultEntryEventFactory;
 import org.apache.geode.internal.cache.EntryEventImpl;
@@ -276,7 +277,8 @@ public class ReplicateRegionFunction extends CliFunction<Object[]> implements De
             logger.error("Exception {} in sendBatch. Retrying", e.getClass().getName());
             try {
               connection = senderPool.acquireConnection();
-            } catch (NoAvailableServersException | AllConnectionsInUseException e1) {
+            } catch (NoAvailableServersException | AllConnectionsInUseException
+                | DistributedSystemDisconnectedException e1) {
               return new CliFunctionResult(context.getMemberName(),
                   CliFunctionResult.StatusState.ERROR,
                   CliStrings.format(

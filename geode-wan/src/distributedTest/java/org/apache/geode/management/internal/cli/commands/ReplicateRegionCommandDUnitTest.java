@@ -423,11 +423,11 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
     // Create senders and receivers with replication as follows: "A" -> "B"
     if (useParallel) {
       createReceiverInVMs(server1InB, server2InB, server3InB);
-      createSenders(useParallel, serversInA, null, senderIdInA, null, true);
+      createSenders(useParallel, serversInA, null, senderIdInA, null);
     } else {
       // Senders will connect to receiver in server1InB
       server1InB.invoke(WANTestBase::createReceiver);
-      createSenders(useParallel, serversInA, null, senderIdInA, null, false);
+      createSenders(useParallel, serversInA, null, senderIdInA, null);
       createReceiverInVMs(server2InB, server3InB);
     }
 
@@ -450,7 +450,7 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
     LoggingExecutors.newSingleThreadExecutor(getTestMethodName(), true)
         .submit(replicateCommandFuture);
 
-    Thread.sleep(1500);
+    Thread.sleep(5000);
     if (gwToBeStopped == Gateway.SENDER) {
 
       // Stop sender
@@ -684,7 +684,7 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
 
     // Create senders and receivers with replication as follows: "A" -> "B" -> "C"
     createSenders(isParallelGatewaySender, serversInA, serverInB,
-        senderIdInA, senderIdInB, true);
+        senderIdInA, senderIdInB);
     createReceivers(serverInB, serverInC);
 
     // Check that entries are not replicated to "B" nor "C"
@@ -779,7 +779,7 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
 
     // Create senders and receivers with replication as follows: "A" -> "B" -> "C"
     createSenders(isParallelGatewaySender, serversInA, serverInB,
-        senderIdInA, senderIdInB, true);
+        senderIdInA, senderIdInB);
     createReceivers(serverInB, serverInC);
 
     // Execute replicate region command
@@ -836,7 +836,7 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
 
     // Create senders and receivers with replication as follows: "A" -> "B" -> "C"
     createSenders(isParallelGatewaySender, serversInA, serverInB,
-        senderIdInA, senderIdInB, true);
+        senderIdInA, senderIdInB);
     createReceivers(serverInB, serverInC);
 
     // Execute cancel replicate region command
@@ -897,7 +897,7 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
 
     // Create senders and receivers with replication as follows: "A" -> "B" -> "C"
     createSenders(isParallelGatewaySender, serversInA, serverInB,
-        senderIdInA, senderIdInB, true);
+        senderIdInA, senderIdInB);
     createReceivers(serverInB, serverInC);
 
     // Execute replicate region command to be canceled in an independent thread
@@ -984,7 +984,7 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
   }
 
   private void createSenders(boolean isParallelGatewaySender, List<VM> serversInA,
-      VM serverInB, String senderIdInA, String senderIdInB, boolean asyncStart) {
+      VM serverInB, String senderIdInA, String senderIdInB) {
     if (serverInB != null && senderIdInB != null) {
       serverInB.invoke(() -> WANTestBase.createSender(senderIdInB, 3,
           isParallelGatewaySender, 100, 10, false,
@@ -995,12 +995,7 @@ public class ReplicateRegionCommandDUnitTest extends WANTestBase {
           100, 10, false,
           false, null, true));
     }
-    if (asyncStart) {
-      startSenderInVMsAsync(senderIdInA, serversInA.toArray(new VM[0]));
-    } else {
-      startSenderInVMs(senderIdInA, serversInA.toArray(new VM[0]));
-    }
-
+    startSenderInVMsAsync(senderIdInA, serversInA.toArray(new VM[0]));
   }
 
   private void createReceivers(VM serverInB, VM serverInC) {

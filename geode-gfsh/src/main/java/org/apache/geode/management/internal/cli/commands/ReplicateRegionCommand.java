@@ -15,6 +15,7 @@
 
 package org.apache.geode.management.internal.cli.commands;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.shell.core.annotation.CliCommand;
@@ -26,7 +27,6 @@ import org.apache.geode.cache.execute.ResultCollector;
 import org.apache.geode.management.cli.CliMetaData;
 import org.apache.geode.management.cli.ConverterHint;
 import org.apache.geode.management.cli.GfshCommand;
-import org.apache.geode.management.cli.Result;
 import org.apache.geode.management.internal.cli.functions.ReplicateRegionFunction;
 import org.apache.geode.management.internal.cli.result.model.ResultModel;
 import org.apache.geode.management.internal.functions.CliFunctionResult;
@@ -58,31 +58,27 @@ public class ReplicateRegionCommand extends GfshCommand {
           help = CliStrings.REPLICATE_REGION__CANCEL__HELP) boolean isCancel) {
 
     authorize(Resource.DATA, Operation.WRITE, regionName);
-
-    ResultModel result = null;
+    ResultModel result;
     try {
       final Object[] args = {regionName, senderId, isCancel, maxRate, batchSize};
       ResultCollector<?, ?> rc =
           executeFunction(replicateRegionFunction, args, getAllNormalMembers());
+      final List<CliFunctionResult> cliFunctionResults = new ArrayList<>();
       @SuppressWarnings("unchecked")
       final List resultsObjects = (List) rc.getResult();
       for (Object r : resultsObjects) {
-        if (!(r instanceof CliFunctionResult)) {
-          result = ResultModel.createError(
-              CliStrings.format(CliStrings.COMMAND_FAILURE_MESSAGE, r));
+        if (r instanceof FunctionInvocationTargetException) {
+          CliFunctionResult errorResult =
+              new CliFunctionResult(((FunctionInvocationTargetException) r).getMemberId().getName(),
+                  CliFunctionResult.StatusState.ERROR,
+                  ((FunctionInvocationTargetException) r).getMessage());
+          cliFunctionResults.add(errorResult);
+        } else {
+          cliFunctionResults.add((CliFunctionResult) r);
         }
       }
-      if (result == null) {
-        @SuppressWarnings("unchecked")
-        final List<CliFunctionResult> results = (List<CliFunctionResult>) rc.getResult();
-        result = ResultModel.createMemberStatusResult(results);
-        for (CliFunctionResult functionResult : results) {
-          if (functionResult.getStatus().equals(CliFunctionResult.StatusState.ERROR.toString())) {
-            result.setStatus(Result.Status.ERROR);
-            break;
-          }
-        }
-      }
+
+      result = ResultModel.createMemberStatusResult(cliFunctionResults, null, null, false, false);
 
     } catch (CacheClosedException e) {
       result = ResultModel.createError(e.getMessage());

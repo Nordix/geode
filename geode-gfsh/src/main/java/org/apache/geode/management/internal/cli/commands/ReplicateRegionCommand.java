@@ -26,6 +26,7 @@ import org.apache.geode.cache.execute.ResultCollector;
 import org.apache.geode.management.cli.CliMetaData;
 import org.apache.geode.management.cli.ConverterHint;
 import org.apache.geode.management.cli.GfshCommand;
+import org.apache.geode.management.cli.Result;
 import org.apache.geode.management.internal.cli.functions.ReplicateRegionFunction;
 import org.apache.geode.management.internal.cli.result.model.ResultModel;
 import org.apache.geode.management.internal.functions.CliFunctionResult;
@@ -58,14 +59,31 @@ public class ReplicateRegionCommand extends GfshCommand {
 
     authorize(Resource.DATA, Operation.WRITE, regionName);
 
-    ResultModel result;
+    ResultModel result = null;
     try {
       final Object[] args = {regionName, senderId, isCancel, maxRate, batchSize};
       ResultCollector<?, ?> rc =
           executeFunction(replicateRegionFunction, args, getAllNormalMembers());
       @SuppressWarnings("unchecked")
-      final List<CliFunctionResult> results = (List<CliFunctionResult>) rc.getResult();
-      result = ResultModel.createMemberStatusResult(results);
+      final List resultsObjects = (List) rc.getResult();
+      for (Object r : resultsObjects) {
+        if (!(r instanceof CliFunctionResult)) {
+          result = ResultModel.createError(
+              CliStrings.format(CliStrings.COMMAND_FAILURE_MESSAGE, r));
+        }
+      }
+      if (result == null) {
+        @SuppressWarnings("unchecked")
+        final List<CliFunctionResult> results = (List<CliFunctionResult>) rc.getResult();
+        result = ResultModel.createMemberStatusResult(results);
+        for (CliFunctionResult functionResult : results) {
+          if (functionResult.getStatus().equals(CliFunctionResult.StatusState.ERROR.toString())) {
+            result.setStatus(Result.Status.ERROR);
+            break;
+          }
+        }
+      }
+
     } catch (CacheClosedException e) {
       result = ResultModel.createError(e.getMessage());
     } catch (FunctionInvocationTargetException e) {

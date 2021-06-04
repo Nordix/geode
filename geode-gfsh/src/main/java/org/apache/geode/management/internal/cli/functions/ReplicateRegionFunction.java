@@ -306,7 +306,7 @@ public class ReplicateRegionFunction extends CliFunction<Object[]> implements De
         }
       }
     } finally {
-      if (connection != null) {
+      if (senderPool != null && connection != null) {
         ((PooledConnection) connection).setShouldDestroy();
         senderPool.returnConnection(connection);
       }

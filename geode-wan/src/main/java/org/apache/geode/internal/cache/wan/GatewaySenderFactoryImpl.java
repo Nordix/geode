@@ -111,6 +111,12 @@ public class GatewaySenderFactoryImpl implements InternalGatewaySenderFactory {
   }
 
   @Override
+  public GatewaySenderFactory setSocketConnectTimeout(int socketConnectTimeout) {
+    this.attrs.socketConnectTimeout = socketConnectTimeout;
+    return this;
+  }
+
+  @Override
   public GatewaySenderFactory setDiskStoreName(String diskStoreName) {
     this.attrs.diskStoreName = diskStoreName;
     return this;
@@ -376,6 +382,7 @@ public class GatewaySenderFactoryImpl implements InternalGatewaySenderFactory {
     this.attrs.manualStart = senderCreation.isManualStart();
     this.attrs.socketBufferSize = senderCreation.getSocketBufferSize();
     this.attrs.socketReadTimeout = senderCreation.getSocketReadTimeout();
+    this.attrs.socketConnectTimeout = senderCreation.getSocketConnectTimeout();
     this.attrs.isBatchConflationEnabled = senderCreation.isBatchConflationEnabled();
     this.attrs.batchSize = senderCreation.getBatchSize();
     this.attrs.batchTimeInterval = senderCreation.getBatchTimeInterval();

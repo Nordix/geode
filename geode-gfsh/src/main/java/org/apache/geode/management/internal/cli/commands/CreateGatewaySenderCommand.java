@@ -97,6 +97,9 @@ public class CreateGatewaySenderCommand extends SingleGfshCommand {
       @CliOption(key = CliStrings.CREATE_GATEWAYSENDER__SOCKETREADTIMEOUT,
           help = CliStrings.CREATE_GATEWAYSENDER__SOCKETREADTIMEOUT__HELP) Integer socketReadTimeout,
 
+      @CliOption(key = CliStrings.CREATE_GATEWAYSENDER__SOCKETCONNECTTIMEOUT,
+          help = CliStrings.CREATE_GATEWAYSENDER__SOCKETCONNECTTIMEOUT__HELP) Integer socketConnectTimeout,
+
       @CliOption(key = CliStrings.CREATE_GATEWAYSENDER__ENABLEBATCHCONFLATION,
           specifiedDefaultValue = "true",
           unspecifiedDefaultValue = "false",
@@ -144,7 +147,8 @@ public class CreateGatewaySenderCommand extends SingleGfshCommand {
             socketBufferSize, socketReadTimeout, enableBatchConflation, batchSize,
             batchTimeInterval, enablePersistence, diskStoreName, diskSynchronous, maxQueueMemory,
             alertThreshold, dispatcherThreads, orderPolicy == null ? null : orderPolicy.name(),
-            gatewayEventFilters, gatewayTransportFilter, groupTransactionEvents);
+            gatewayEventFilters, gatewayTransportFilter, groupTransactionEvents,
+            socketConnectTimeout);
 
     GatewaySenderFunctionArgs gatewaySenderFunctionArgs =
         new GatewaySenderFunctionArgs(configuration);
@@ -228,7 +232,8 @@ public class CreateGatewaySenderCommand extends SingleGfshCommand {
       String orderPolicy,
       String[] gatewayEventFilters,
       String[] gatewayTransportFilters,
-      Boolean groupTransactionEvents) {
+      Boolean groupTransactionEvents,
+      Integer socketConnectTimeout) {
     CacheConfig.GatewaySender sender = new CacheConfig.GatewaySender();
     sender.setId(id);
     sender.setRemoteDistributedSystemId(int2string(remoteDSId));
@@ -247,6 +252,7 @@ public class CreateGatewaySenderCommand extends SingleGfshCommand {
     sender.setDispatcherThreads(int2string(dispatcherThreads));
     sender.setOrderPolicy(orderPolicy);
     sender.setGroupTransactionEvents(groupTransactionEvents);
+    sender.setSocketConnectTimeout(int2string(socketConnectTimeout));
     if (gatewayEventFilters != null) {
       sender.getGatewayEventFilters().addAll((stringsToDeclarableTypes(gatewayEventFilters)));
     }

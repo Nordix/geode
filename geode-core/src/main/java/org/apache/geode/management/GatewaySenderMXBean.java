@@ -52,6 +52,8 @@ public interface GatewaySenderMXBean {
    */
   long getSocketReadTimeout();
 
+  long getSocketConnectTimeout();
+
   /**
    * Returns the name of the disk store that is used for persistence.
    */

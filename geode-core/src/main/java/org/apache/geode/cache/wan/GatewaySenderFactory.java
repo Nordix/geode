@@ -81,6 +81,9 @@ public interface GatewaySenderFactory {
    */
   GatewaySenderFactory setSocketReadTimeout(int timeout);
 
+  GatewaySenderFactory setSocketConnectTimeout(int timeout);
+
+
   /**
    * Sets the disk store name for overflow or persistence
    *

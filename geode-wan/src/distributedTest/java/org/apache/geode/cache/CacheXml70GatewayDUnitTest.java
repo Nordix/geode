@@ -132,6 +132,7 @@ public class CacheXml70GatewayDUnitTest extends CacheXmlTestCase {
     gatewaySenderFactory.setManualStart(true);
     gatewaySenderFactory.setSocketBufferSize(1234);
     gatewaySenderFactory.setSocketReadTimeout(1050);
+    gatewaySenderFactory.setSocketConnectTimeout(1050);
     gatewaySenderFactory.setBatchConflationEnabled(false);
     gatewaySenderFactory.setBatchSize(88);
     gatewaySenderFactory.setBatchTimeInterval(9);
@@ -168,6 +169,7 @@ public class CacheXml70GatewayDUnitTest extends CacheXmlTestCase {
     gatewaySenderFactory.setManualStart(true);
     gatewaySenderFactory.setSocketBufferSize(124);
     gatewaySenderFactory.setSocketReadTimeout(1000);
+    gatewaySenderFactory.setSocketConnectTimeout(1000);
     gatewaySenderFactory.setBatchConflationEnabled(false);
     gatewaySenderFactory.setBatchSize(100);
     gatewaySenderFactory.setBatchTimeInterval(10);

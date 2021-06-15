@@ -60,7 +60,7 @@ public interface GatewaySender {
   int DEFAULT_SOCKET_CONNECT_TIMEOUT = Integer
       .getInteger(
           GeodeGlossary.GEMFIRE_PREFIX + "cache.gatewaySender.default-socket-connect-timeout",
-          2000)
+          59000)
       .intValue();
 
 

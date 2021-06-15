@@ -60,14 +60,14 @@ public interface GatewaySender {
   int DEFAULT_SOCKET_CONNECT_TIMEOUT = Integer
       .getInteger(
           GeodeGlossary.GEMFIRE_PREFIX + "cache.gatewaySender.default-socket-connect-timeout",
-          2000)
+          59000)
       .intValue();
 
 
   /**
    * The default minimum socket read timeout.
    */
-  int MINIMUM_SOCKET_READ_TIMEOUT = 30000;
+  int MINIMUM_SOCKET_READ_TIMEOUT = 0;
 
   /**
    * Size of the oplog file used for the persistent queue in bytes

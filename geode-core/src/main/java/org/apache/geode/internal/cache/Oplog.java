@@ -5347,10 +5347,7 @@ public class Oplog implements CompactableOplog, Flushable {
               myRAF.seek(offsetInOplog);
               this.stats.incOplogSeeks();
               byte[] valueBytes = new byte[valueLength];
-              logger.info("toberal reading from: {}, bytes: {}", this.diskFile.getPath(),
-                  valueLength);
               myRAF.readFully(valueBytes);
-              logger.info("toberal read from: {}, bytes: {}", this.diskFile.getPath(), valueLength);
               this.stats.incOplogReads();
               bb = new BytesAndBits(valueBytes, userBits);
               // also set the product version for an older product

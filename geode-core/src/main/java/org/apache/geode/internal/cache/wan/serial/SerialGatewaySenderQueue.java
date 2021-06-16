@@ -17,6 +17,7 @@ package org.apache.geode.internal.cache.wan.serial;
 import static org.apache.geode.cache.wan.GatewaySender.DEFAULT_BATCH_SIZE;
 import static org.apache.geode.cache.wan.GatewaySender.GET_TRANSACTION_EVENTS_FROM_QUEUE_RETRIES;
 import static org.apache.geode.cache.wan.GatewaySender.GET_TRANSACTION_EVENTS_FROM_QUEUE_WAIT_TIME_MS;
+import static org.apache.geode.cache.wan.GatewaySender.MAX_QUEUE_ELEMENTS_CHECKED_FOR_TRANSACTION;
 
 import java.util.ArrayList;
 import java.util.Deque;
@@ -904,13 +905,14 @@ public class SerialGatewaySenderQueue implements RegionQueue {
 
   public boolean hasEventsMatching(Predicate<InternalGatewayQueueEvent> condition) {
     InternalGatewayQueueEvent event;
-    long currentKey = getHeadKey();
-    if (currentKey == getTailKey()) {
+    long currentKey = getTailKey();
+    if (currentKey == getHeadKey()) {
       return false;
     }
-    while ((currentKey = inc(currentKey)) != getTailKey()) {
+    int iters = 0;
+    while (iters++ < MAX_QUEUE_ELEMENTS_CHECKED_FOR_TRANSACTION
+        && (currentKey = dec(currentKey)) != getHeadKey()) {
       event = (InternalGatewayQueueEvent) optimalGet(currentKey);
-
       if (event == null) {
         continue;
       }

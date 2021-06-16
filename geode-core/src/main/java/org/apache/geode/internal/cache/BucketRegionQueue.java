@@ -14,6 +14,8 @@
  */
 package org.apache.geode.internal.cache;
 
+import static org.apache.geode.cache.wan.GatewaySender.MAX_QUEUE_ELEMENTS_CHECKED_FOR_TRANSACTION;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -489,8 +491,10 @@ public class BucketRegionQueue extends AbstractBucketRegionQueue {
       if (this.getPartitionedRegion().isDestroyed()) {
         throw new BucketRegionQueueUnavailableException();
       }
-      for (Object o : eventSeqNumDeque) {
-        Object event = optimalGet(o);
+      Iterator iterator = eventSeqNumDeque.descendingIterator();
+      int iters = 0;
+      while (iters++ < MAX_QUEUE_ELEMENTS_CHECKED_FOR_TRANSACTION && iterator.hasNext()) {
+        Object event = optimalGet(iterator.next());
         if (!(event instanceof InternalGatewayQueueEvent)) {
           continue;
         }

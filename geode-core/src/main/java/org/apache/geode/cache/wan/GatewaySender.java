@@ -207,6 +207,12 @@ public interface GatewaySender {
           GeodeGlossary.GEMFIRE_PREFIX + "time-to-complete-transactions-before-stop-ms",
           1000);
 
+  int MAX_QUEUE_ELEMENTS_CHECKED_FOR_TRANSACTION =
+      Integer.getInteger(
+          GeodeGlossary.GEMFIRE_PREFIX + "max-queue-elements-checked-for-transaction",
+          1000);
+
+
   /**
    * The order policy. This enum is applicable only when concurrency-level is > 1.
    *

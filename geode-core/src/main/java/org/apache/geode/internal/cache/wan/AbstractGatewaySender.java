@@ -148,7 +148,7 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
 
   protected LocatorDiscoveryCallback locatorDiscoveryCallback;
 
-  private final ReentrantReadWriteLock lifeCycleLock = new ReentrantReadWriteLock();
+  private final ReentrantReadWriteLock lifeCycleLock = new ReentrantReadWriteLock(true);
 
   protected GatewaySenderAdvisor senderAdvisor;
 
@@ -1097,10 +1097,10 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
         return;
       }
 
-      if (!this.getLifeCycleLock().readLock().tryLock()) {
+      if (!this.getLifeCycleLock().isWriteLocked()) {
         synchronized (this.queuedEventsSync) {
           if (!this.enqueuedAllTempQueueEvents) {
-            if (!this.getLifeCycleLock().readLock().tryLock()) {
+            if (!this.getLifeCycleLock().isWriteLocked()) {
               Object substituteValue = getSubstituteValue(clonedEvent, operation);
               this.tmpQueuedEvents.add(new TmpQueueEvent(operation, clonedEvent, substituteValue));
               freeClonedEvent = false;
@@ -1112,10 +1112,8 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
             }
           }
         }
-        if (this.enqueuedAllTempQueueEvents) {
-          this.getLifeCycleLock().readLock().lock();
-        }
       }
+      this.getLifeCycleLock().readLock().lock();
       try {
         // If this gateway is not running, return
         // The sender may have stopped, after we have checked the status in the beginning.

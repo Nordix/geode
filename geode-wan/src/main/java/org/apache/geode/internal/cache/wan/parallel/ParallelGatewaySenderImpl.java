@@ -109,25 +109,36 @@ public class ParallelGatewaySenderImpl extends AbstractRemoteGatewaySender {
 
   @Override
   public void stop() {
+    logger.info("toberal gw sender stop");
     preStop();
+    logger.info("toberal gw sender after prestop");
     this.getLifeCycleLock().writeLock().lock();
+    logger.info("toberal gw sender in lock");
     try {
       if (!this.isRunning()) {
+        logger.info("toberal gw sender is not running");
         return;
       }
       // Stop the dispatcher
       stopProcessing();
+      logger.info("toberal gw sender after stop processing");
 
       // Stop the proxy (after the dispatcher, so the socket is still
       // alive until after the dispatcher has stopped)
       stompProxyDead();
+      logger.info("toberal gw sender after stompProxyDead");
 
       // Close the listeners
       for (AsyncEventListener listener : this.listeners) {
+        logger.info("toberal gw sender closing listener: {}", listener);
         listener.close();
       }
       // stop the running threads, open sockets if any
+      logger.info("toberal gw sender before getQueue().cleanUp()");
       ((ConcurrentParallelGatewaySenderQueue) this.eventProcessor.getQueue()).cleanUp();
+      logger.info("toberal gw sender after getQueue().cleanUp()");
+
+      logger.info("toberal gw sender Stopped  {}", this);
 
       logger.info("Stopped  {}", this);
 
@@ -135,12 +146,16 @@ public class ParallelGatewaySenderImpl extends AbstractRemoteGatewaySender {
           (InternalDistributedSystem) this.cache.getDistributedSystem();
       system.handleResourceEvent(ResourceEvent.GATEWAYSENDER_STOP, this);
 
+      logger.info("toberal gw sender system.handleResourceEvent");
       clearTempEventsAfterSenderStopped();
       // Keep the eventProcessor around so we can ask it for the regionQueues later.
       // Tests expect to be able to do this.
     } finally {
+      logger.info("toberal gw sender before postStop");
       postStop();
+      logger.info("toberal gw sender after postStop");
       this.getLifeCycleLock().writeLock().unlock();
+      logger.info("toberal gw sender after unlock");
     }
   }
 

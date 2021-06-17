@@ -90,6 +90,17 @@ import org.apache.geode.logging.internal.log4j.api.LogService;
  */
 public abstract class AbstractGatewaySender implements InternalGatewaySender, DistributionAdvisee {
 
+  private class MyReentrantFairReadWriteLock extends ReentrantReadWriteLock {
+
+    MyReentrantFairReadWriteLock() {
+      super(true);
+    }
+
+    public int getNumberOfQueuedWriterThreads() {
+      return this.getQueuedWriterThreads().size();
+    }
+  }
+
   private static final Logger logger = LogService.getLogger();
 
   protected InternalCache cache;
@@ -148,7 +159,7 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
 
   protected LocatorDiscoveryCallback locatorDiscoveryCallback;
 
-  private final ReentrantReadWriteLock lifeCycleLock = new ReentrantReadWriteLock(true);
+  private final ReentrantReadWriteLock lifeCycleLock = new MyReentrantFairReadWriteLock();
 
   protected GatewaySenderAdvisor senderAdvisor;
 
@@ -1097,10 +1108,12 @@ public abstract class AbstractGatewaySender implements InternalGatewaySender, Di
         return;
       }
 
-      if (!this.getLifeCycleLock().isWriteLocked()) {
+      if (((MyReentrantFairReadWriteLock) this.getLifeCycleLock())
+          .getNumberOfQueuedWriterThreads() > 0) {
         synchronized (this.queuedEventsSync) {
           if (!this.enqueuedAllTempQueueEvents) {
-            if (!this.getLifeCycleLock().isWriteLocked()) {
+            if (((MyReentrantFairReadWriteLock) this.getLifeCycleLock())
+                .getNumberOfQueuedWriterThreads() > 0) {
               Object substituteValue = getSubstituteValue(clonedEvent, operation);
               this.tmpQueuedEvents.add(new TmpQueueEvent(operation, clonedEvent, substituteValue));
               freeClonedEvent = false;
